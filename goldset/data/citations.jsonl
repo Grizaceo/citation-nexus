@@ -1,0 +1,124 @@
+{"pattern": "arxiv.id", "text": "We use arXiv:2401.01234 in our work.", "expect": "2401.01234"}
+{"pattern": "arxiv.id", "text": "Reference: arXiv:2310.06825v2 confirmed by reviewers.", "expect": "2310.06825v2"}
+{"pattern": "arxiv.id", "text": "Pre-print arXiv:2401.12345 is on the topic.", "expect": "2401.12345"}
+{"pattern": "arxiv.id", "text": "See arXiv:2106.09685 for architectural details.", "expect": "2106.09685"}
+{"pattern": "arxiv.id", "text": "The paper arXiv:1706.03762 changed everything in 2017.", "expect": "1706.03762"}
+{"pattern": "arxiv.id", "text": "We cite arXiv:2005.14165 and arXiv:2005.14166 together.", "expect": "2005.14165"}
+{"pattern": "arxiv.id", "text": "arXiv: 2401.01234 has an extra space after the colon.", "expect": "2401.01234"}
+{"pattern": "arxiv.id", "text": "Recent work arXiv:2401.98765v12 was retracted.", "expect": "2401.98765v12"}
+{"pattern": "arxiv.id", "text": "Compare to arXiv:1905.11946v3 for the original framing.", "expect": "1905.11946v3"}
+{"pattern": "arxiv.id", "text": "Background: arXiv:1706.03762 and its follow-up.", "expect": "1706.03762"}
+{"pattern": "arxiv.id", "text": "The year 2024 is here, but no paper is cited.", "expect_null": true}
+{"pattern": "arxiv.id", "text": "Version 1.2.3 of the library was released.", "expect_null": true}
+{"pattern": "arxiv.id", "text": "Phone number 5555.1234 is unrelated.", "expect_null": true}
+{"pattern": "arxiv.id", "text": "2401.01234 alone has no arXiv: prefix.", "expect_null": true}
+{"pattern": "arxiv.id", "text": "2401.012 is too short for an arXiv id.", "expect_null": true}
+{"pattern": "arxiv.id", "text": "Not every arXiv id is real, e.g. arXiv:9999.99999.", "expect": "9999.99999"}
+
+{"pattern": "arxiv.abs", "text": "Available at https://arxiv.org/abs/2401.01234.", "expect": "2401.01234"}
+{"pattern": "arxiv.abs", "text": "PDF: https://arxiv.org/pdf/2310.06825 in the references.", "expect": "2310.06825"}
+{"pattern": "arxiv.abs", "text": "https://arxiv.org/abs/1706.03762v5 is the canonical link.", "expect": "1706.03762v5"}
+{"pattern": "arxiv.abs", "text": "We linked arxiv.org/abs/2401.99999 without scheme.", "expect": "2401.99999"}
+{"pattern": "arxiv.abs", "text": "https://arxiv.org/pdf/1905.11946v3 here", "expect": "1905.11946v3"}
+{"pattern": "arxiv.abs", "text": "From arxiv.org/abs/2401.11111v2 we get the appendix.", "expect": "2401.11111v2"}
+{"pattern": "arxiv.abs", "text": "Direct: https://arxiv.org/abs/2005.14165 for the paper.", "expect": "2005.14165"}
+{"pattern": "arxiv.abs", "text": "https://arxiv.org/list/cs.LG/2024 doesn't carry an id.", "expect_null": true}
+{"pattern": "arxiv.abs", "text": "https://arxiv.org/help has no paper attached.", "expect_null": true}
+{"pattern": "arxiv.abs", "text": "https://example.com/abs/2401.01234 is not arxiv.", "expect_null": true}
+{"pattern": "arxiv.abs", "text": "arxiv.org alone is just the domain.", "expect_null": true}
+{"pattern": "arxiv.abs", "text": "https://arxiv.org/2401.01234 has no abs or pdf segment.", "expect_null": true}
+{"pattern": "arxiv.abs", "text": "https://arxiv.org/abs/ has no id.", "expect_null": true}
+{"pattern": "arxiv.abs", "text": "https://arxiv.org/abs/. (just a dot)", "expect_null": true}
+{"pattern": "arxiv.abs", "text": "https://arxiv.org/search/?query=foo is a search URL.", "expect_null": true}
+
+{"pattern": "doi", "text": "DOI: 10.1038/nature12373 was the breakthrough.", "expect": "10.1038/nature12373"}
+{"pattern": "doi", "text": "See 10.1109/CVPR.2018.00145 for the reference.", "expect": "10.1109/CVPR.2018.00145"}
+{"pattern": "doi", "text": "Reference 10.1126/science.1058040 here.", "expect": "10.1126/science.1058040"}
+{"pattern": "doi", "text": "10.1145/3442188.3445922 is the ACM doi.", "expect": "10.1145/3442188.3445922"}
+{"pattern": "doi", "text": "D.O.I 10.1037/0003-066X.59.1.29", "expect": "10.1037/0003-066X.59.1.29"}
+{"pattern": "doi", "text": "We cite 10.1162/neco.2009.12-07-678 for the algorithm.", "expect": "10.1162/neco.2009.12-07-678"}
+{"pattern": "doi", "text": "Reference: 10.1000/xyz123", "expect": "10.1000/xyz123"}
+{"pattern": "doi", "text": "Bio doi 10.1186/s13059-019-1832-y is open access.", "expect": "10.1186/s13059-019-1832-y"}
+{"pattern": "doi", "text": "Version 10.5.0 of the software is out.", "expect_null": true}
+{"pattern": "doi", "text": "ISO 10.000 is too short after the period.", "expect_null": true}
+{"pattern": "doi", "text": "10.1038 alone has no slash.", "expect_null": true}
+{"pattern": "doi", "text": "It costs $10.50 today, not a doi.", "expect_null": true}
+{"pattern": "doi", "text": "10.1234 / 56 is a fraction, not a doi.", "expect_null": true}
+{"pattern": "doi", "text": "We went 10.miles today.", "expect_null": true}
+{"pattern": "doi", "text": "10.12345/ has nothing after the slash.", "expect_null": true}
+{"pattern": "doi", "text": "10.abc/foo has letters in the registrant code.", "expect_null": true}
+
+{"pattern": "doi.url", "text": "Available at https://doi.org/10.1109/CVPR.2018.00145", "expect": "10.1109/CVPR.2018.00145"}
+{"pattern": "doi.url", "text": "https://doi.org/10.1038/nature12373 in the references.", "expect": "10.1038/nature12373"}
+{"pattern": "doi.url", "text": "doi.org/10.1126/science.1058040 here", "expect": "10.1126/science.1058040"}
+{"pattern": "doi.url", "text": "http://doi.org/10.1000/xyz123", "expect": "10.1000/xyz123"}
+{"pattern": "doi.url", "text": "https://doi.org/10.1145/3442188.3445922 for the article.", "expect": "10.1145/3442188.3445922"}
+{"pattern": "doi.url", "text": "DOI: https://doi.org/10.1037/0003-066X.59.1.29", "expect": "10.1037/0003-066X.59.1.29"}
+{"pattern": "doi.url", "text": "See https://doi.org/10.1186/s13059-019-1832-y", "expect": "10.1186/s13059-019-1832-y"}
+{"pattern": "doi.url", "text": "doi.com is a different site entirely.", "expect_null": true}
+{"pattern": "doi.url", "text": "doi.org has no DOI.", "expect_null": true}
+{"pattern": "doi.url", "text": "https://doi.org/ has no DOI after the slash.", "expect_null": true}
+{"pattern": "doi.url", "text": "Visit doi.org for general info.", "expect_null": true}
+{"pattern": "doi.url", "text": "https://example.com/doi.org/10.1234/foo is not real.", "expect": "10.1234/foo"}
+{"pattern": "doi.url", "text": "https://doi.org/abc is not a doi (no 10.NNNN prefix).", "expect_null": true}
+
+{"pattern": "pmid", "text": "The study (PMID: 35678901) shows the link.", "expect": "35678901"}
+{"pattern": "pmid", "text": "PMID 33445566 is widely referenced.", "expect": "33445566"}
+{"pattern": "pmid", "text": "See https://pubmed.ncbi.nlm.nih.gov/32345678 for evidence.", "expect": "32345678"}
+{"pattern": "pmid", "text": "PMID:30000001 has no space after the colon.", "expect": "30000001"}
+{"pattern": "pmid", "text": "PMID:1234567 was a classic paper.", "expect": "1234567"}
+{"pattern": "pmid", "text": "https://pubmed.ncbi.nlm.nih.gov/31000000", "expect": "31000000"}
+{"pattern": "pmid", "text": "PMID: 32000000 has a space.", "expect": "32000000"}
+{"pattern": "pmid", "text": "PMID:34567890 from 2020 is influential.", "expect": "34567890"}
+{"pattern": "pmid", "text": "PMID 12345 is too short (5 digits).", "expect_null": true}
+{"pattern": "pmid", "text": "PMID 12345678901 has too many digits.", "expect_null": true}
+{"pattern": "pmid", "text": "patient ID 9876543 isn't a PMID.", "expect_null": true}
+{"pattern": "pmid", "text": "The ID 35678901 alone isn't a PMID.", "expect_null": true}
+{"pattern": "pmid", "text": "PMID12345 missing both colon and space.", "expect_null": true}
+{"pattern": "pmid", "text": "pmid: 35678901 is lowercase (PMID is the canonical form).", "expect_null": true}
+
+{"pattern": "pmcid", "text": "Full text at PMC7654321 is open access.", "expect": "PMC7654321"}
+{"pattern": "pmcid", "text": "PMC1234567 is open access.", "expect": "PMC1234567"}
+{"pattern": "pmcid", "text": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7654321/", "expect": "PMC7654321"}
+{"pattern": "pmcid", "text": "See PMC9999999 for the paper.", "expect": "PMC9999999"}
+{"pattern": "pmcid", "text": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12345678/", "expect": "PMC12345678"}
+{"pattern": "pmcid", "text": "PMC1234 is a short id.", "expect": "PMC1234"}
+{"pattern": "pmcid", "text": "See https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9876543/ for the appendix.", "expect": "PMC9876543"}
+{"pattern": "pmcid", "text": "PMC123 is too short (3 digits, need 4-8).", "expect_null": true}
+{"pattern": "pmcid", "text": "PMC123456789 is too long (9 digits).", "expect_null": true}
+{"pattern": "pmcid", "text": "PMCID PMC1234567 is also valid syntax but we already captured the bare.", "expect": "PMC1234567"}
+{"pattern": "pmcid", "text": "no PMC ID here in this sentence.", "expect_null": true}
+{"pattern": "pmcid", "text": "The power mode PMC is not a real PMC id.", "expect_null": true}
+{"pattern": "pmcid", "text": "PMCC1234 has a typo, not a real PMC id.", "expect_null": true}
+
+{"pattern": "github", "text": "Code at https://github.com/octocat/Hello-World", "expect": "https://github.com/octocat/Hello-World"}
+{"pattern": "github", "text": "Clone https://github.com/owner/repo.git to inspect.", "expect": "https://github.com/owner/repo"}
+{"pattern": "github", "text": "https://github.com/vercel/next.js is the framework.", "expect": "https://github.com/vercel/next.js"}
+{"pattern": "github", "text": "See https://github.com/python/cpython for the C implementation.", "expect": "https://github.com/python/cpython"}
+{"pattern": "github", "text": "Repo: https://github.com/torvalds/linux", "expect": "https://github.com/torvalds/linux"}
+{"pattern": "github", "text": "https://github.com/microsoft/vscode/ has the extensions API.", "expect": "https://github.com/microsoft/vscode"}
+{"pattern": "github", "text": "Open https://github.com/owner/repo?ref=foo to see the branch.", "expect": "https://github.com/owner/repo"}
+{"pattern": "github", "text": "Mirror at https://github.com/octocat/Hello-World#readme.", "expect": "https://github.com/octocat/Hello-World"}
+{"pattern": "github", "text": "github.com/owner/repo without scheme isn't a URL.", "expect_null": true}
+{"pattern": "github", "text": "https://github.com/owner alone is just an account.", "expect_null": true}
+{"pattern": "github", "text": "https://gitlab.com/owner/repo is not github.", "expect_null": true}
+{"pattern": "github", "text": "github.com has no repo path.", "expect_null": true}
+{"pattern": "github", "text": "https://github.com/ has no owner/repo.", "expect_null": true}
+{"pattern": "github", "text": "https://github.com/owner without repo.", "expect_null": true}
+
+{"pattern": "biorxiv", "text": "https://www.biorxiv.org/content/10.1101/2020.05.01.073056v1", "expect": "10.1101/2020.05.01.073056v1"}
+{"pattern": "biorxiv", "text": "biorxiv.org/content/10.1101/2024.01.001 as a preprint.", "expect": "10.1101/2024.01.001"}
+{"pattern": "biorxiv", "text": "Preprint: https://www.biorxiv.org/content/10.1101/2023.06.15.123456", "expect": "10.1101/2023.06.15.123456"}
+{"pattern": "biorxiv", "text": "https://www.biorxiv.org/content/10.1101/2024.08.15.123456v2", "expect": "10.1101/2024.08.15.123456v2"}
+{"pattern": "biorxiv", "text": "biorxiv.org alone is not a paper.", "expect_null": true}
+{"pattern": "biorxiv", "text": "medrxiv.org/content/10.1101/2020.05.01 is medrxiv, not biorxiv.", "expect_null": true}
+{"pattern": "biorxiv", "text": "https://biorxiv.org/ has no DOI after content/ segment.", "expect_null": true}
+{"pattern": "biorxiv", "text": "10.1101/2020.05.01 alone is not a bioRxiv URL.", "expect_null": true}
+
+{"pattern": "medrxiv", "text": "https://www.medrxiv.org/content/10.1101/2020.05.01.073056v1", "expect": "10.1101/2020.05.01.073056v1"}
+{"pattern": "medrxiv", "text": "medrxiv.org/content/10.1101/2024.01.001 as a preprint.", "expect": "10.1101/2024.01.001"}
+{"pattern": "medrxiv", "text": "https://medrxiv.org/content/10.1101/2023.06.15.123456v2", "expect": "10.1101/2023.06.15.123456v2"}
+{"pattern": "medrxiv", "text": "https://www.medrxiv.org/content/10.1101/2024.08.15.123456", "expect": "10.1101/2024.08.15.123456"}
+{"pattern": "medrxiv", "text": "medrxiv.org alone is not a paper.", "expect_null": true}
+{"pattern": "medrxiv", "text": "biorxiv.org/content/10.1101/2020.05.01 is biorxiv, not medrxiv.", "expect_null": true}
+{"pattern": "medrxiv", "text": "10.1101/2020.05.01 alone is not a medRxiv URL.", "expect_null": true}

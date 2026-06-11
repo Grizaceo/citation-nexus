@@ -1,0 +1,232 @@
+{"pattern": "math.theorem", "text": "By Theorem 1.2 we conclude X.", "expect": "1.2"}
+{"pattern": "math.theorem", "text": "Lemma 4 is straightforward.", "expect": "4"}
+{"pattern": "math.theorem", "text": "Corollary 2.3.1 follows from Theorem 1.1.", "expect": "2.3.1"}
+{"pattern": "math.theorem", "text": "We need Proposition 5.7 for the main claim.", "expect": "5.7"}
+{"pattern": "math.theorem", "text": "Conjecture 1.1 is still open.", "expect": "1.1"}
+{"pattern": "math.theorem", "text": "Claim 3.4 holds in our setting.", "expect": "3.4"}
+{"pattern": "math.theorem", "text": "Remark 2.2 explains the caveat.", "expect": "2.2"}
+{"pattern": "math.theorem", "text": "Section 5 is not a theorem; see section 5.", "expect_null": true}
+{"pattern": "math.theorem", "text": "Page 12 has the result.", "expect_null": true}
+{"pattern": "math.theorem", "text": "Theorem without a number is informal.", "expect_null": true}
+{"pattern": "math.theorem", "text": "Theorem is a noun; not a number alone.", "expect_null": true}
+{"pattern": "math.theorem", "text": "Atheorem 5 is not a numbered statement.", "expect_null": true}
+
+{"pattern": "math.definition", "text": "Use Definition 3.1 to define f.", "expect": "3.1"}
+{"pattern": "math.definition", "text": "Definition 1 fixes the notation.", "expect": "1"}
+{"pattern": "math.definition", "text": "Def. 4 is what we want.", "expect": "4"}
+{"pattern": "math.definition", "text": "By Axiom 2.4 we close the argument.", "expect": "2.4"}
+{"pattern": "math.definition", "text": "Hypothesis 5 is the standard one.", "expect": "5"}
+{"pattern": "math.definition", "text": "Definition 7.2.1 makes things precise.", "expect": "7.2.1"}
+{"pattern": "math.definition", "text": "Definition 12 is the last one.", "expect": "12"}
+{"pattern": "math.definition", "text": "Definition alone, no number.", "expect_null": true}
+{"pattern": "math.definition", "text": "My definition of the term is loose.", "expect_null": true}
+{"pattern": "math.definition", "text": "The definition is in section 2.", "expect_null": true}
+{"pattern": "math.definition", "text": "Definitions of 5 things follow.", "expect_null": true}
+{"pattern": "math.definition", "text": "The first definition is informal.", "expect_null": true}
+
+{"pattern": "math.equation", "text": "From (eq. 3) we know it.", "expect": "3"}
+{"pattern": "math.equation", "text": "We use (equation 12) below.", "expect": "12"}
+{"pattern": "math.equation", "text": "Recall (3) in the proof.", "expect": "3"}
+{"pattern": "math.equation", "text": "Equation (7) drives the claim.", "expect": "7"}
+{"pattern": "math.equation", "text": "equation 1 in the text", "expect": "1"}
+{"pattern": "math.equation", "text": "The (eq.42) reference is key.", "expect": "42"}
+{"pattern": "math.equation", "text": "From (eq. 1) to (eq. 2) the bound tightens.", "expect": "1"}
+{"pattern": "math.equation", "text": "Use parens like (1) (2) (3) inline.", "expect": "1"}
+{"pattern": "math.equation", "text": "In section (3) is informal notation.", "expect": "3"}
+{"pattern": "math.equation", "text": "The list (1, 2, 3) is just enumeration.", "expect_null": true}
+{"pattern": "math.equation", "text": "Citation (Smith 2020) is not an equation.", "expect_null": true}
+{"pattern": "math.equation", "text": "equation 1 in the text is not in parens.", "expect_null": true}
+
+{"pattern": "math.bigO", "text": "The runtime is O(n log n).", "expect": "O(n log n)"}
+{"pattern": "math.bigO", "text": "We need O(n) operations.", "expect": "O(n)"}
+{"pattern": "math.bigO", "text": "The space is O(1).", "expect": "O(1)"}
+{"pattern": "math.bigO", "text": "It runs in O(n^2) worst case.", "expect": "O(n^2)"}
+{"pattern": "math.bigO", "text": "Approximation O(m log m + n) suffices.", "expect": "O(m log m + n)"}
+{"pattern": "math.bigO", "text": "In the O(V+E) regime.", "expect": "O(V+E)"}
+{"pattern": "math.bigO", "text": "The (Big) O is just the letter O, not a complexity.", "expect_null": true}
+{"pattern": "math.bigO", "text": "Vitamin O is unrelated to complexity.", "expect_null": true}
+{"pattern": "math.bigO", "text": "Section O is a label, not O().", "expect_null": true}
+{"pattern": "math.bigO", "text": "The pattern O\\n is invalid (newline in body).", "expect_null": true}
+
+{"pattern": "physics.particle", "text": "The muon decays into an electron and two neutrinos.", "expect": "muon"}
+{"pattern": "physics.particle", "text": "We probe the Higgs boson at 125 GeV.", "expect": "Higgs boson"}
+{"pattern": "physics.particle", "text": "The Z boson is heavy.", "expect": "Z boson"}
+{"pattern": "physics.particle", "text": "W boson production cross-section.", "expect": "W boson"}
+{"pattern": "physics.particle", "text": "A proton and a neutron in the nucleus.", "expect": "proton"}
+{"pattern": "physics.particle", "text": "We detect the pion track.", "expect": "pion"}
+{"pattern": "physics.particle", "text": "A free photon is massless.", "expect": "photon"}
+{"pattern": "physics.particle", "text": "A muon neutrino passes through.", "expect": "muon"}
+{"pattern": "physics.particle", "text": "The positron annihilates with the electron.", "expect": "positron"}
+{"pattern": "physics.particle", "text": "We study the gluon inside the proton.", "expect": "gluon"}
+{"pattern": "physics.particle", "text": "Section 5 discusses the proton structure.", "expect": "proton"}
+{"pattern": "physics.particle", "text": "The proton of the atom is positively charged.", "expect": "proton"}
+{"pattern": "physics.particle", "text": "We give a neutron to Alice.", "expect": "neutron"}
+{"pattern": "physics.particle", "text": "An electron orbits the nucleus.", "expect": "electron"}
+{"pattern": "physics.particle", "text": "An antineutron is not in our list.", "expect_null": true}
+{"pattern": "physics.particle", "text": "Section 5 discusses the lattice.", "expect_null": true}
+{"pattern": "physics.particle", "text": "It was a boson event, but boson-like is informal.", "expect": "boson"}
+
+{"pattern": "physics.detector", "text": "ATLAS measured the new resonance.", "expect": "ATLAS"}
+{"pattern": "physics.detector", "text": "CMS confirmed the result.", "expect": "CMS"}
+{"pattern": "physics.detector", "text": "LIGO detected the merger.", "expect": "LIGO"}
+{"pattern": "physics.detector", "text": "CERN houses the LHC.", "expect": "CERN"}
+{"pattern": "physics.detector", "text": "Fermilab announced the precision measurement.", "expect": "Fermilab"}
+{"pattern": "physics.detector", "text": "IceCube observed high-energy neutrinos.", "expect": "IceCube"}
+{"pattern": "physics.detector", "text": "DESY hosted the workshop.", "expect": "DESY"}
+{"pattern": "physics.detector", "text": "SLAC contributed the detector.", "expect": "SLAC"}
+{"pattern": "physics.detector", "text": "ATLAS and CMS observed the new particle.", "expect": "ATLAS"}
+{"pattern": "physics.detector", "text": "Virgo joined the gravitational wave search.", "expect": "Virgo"}
+{"pattern": "physics.detector", "text": "CERN-LHC is the main collider.", "expect": "CERN-LHC"}
+{"pattern": "physics.detector", "text": "ATLAS-LHC is the detector at the LHC.", "expect": "ATLAS-LHC"}
+{"pattern": "physics.detector", "text": "CERN-LHC and ATLAS-LHC are big.", "expect": "CERN-LHC"}
+{"pattern": "physics.detector", "text": "We visited the cathedral.", "expect_null": true}
+{"pattern": "physics.detector", "text": "The agency funded the work.", "expect_null": true}
+{"pattern": "physics.detector", "text": "Kek is informal (we want KEK).", "expect": "KEK"}
+
+{"pattern": "physics.units", "text": "The beam has energy 13.6 GeV.", "expect": "13.6 GeV"}
+{"pattern": "physics.units", "text": "Mass 938 MeV for the proton.", "expect": "938 MeV"}
+{"pattern": "physics.units", "text": "Energy scale of 1.5 TeV.", "expect": "1.5 TeV"}
+{"pattern": "physics.units", "text": "The detector is 12 m long.", "expect": "12 m"}
+{"pattern": "physics.units", "text": "A 5 cm chamber.", "expect": "5 cm"}
+{"pattern": "physics.units", "text": "A 250 nm structure.", "expect": "250 nm"}
+{"pattern": "physics.units", "text": "The run took 600 s.", "expect": "600 s"}
+{"pattern": "physics.units", "text": "The mass is 1.7 GeV/c^2 effectively just GeV.", "expect": "1.7 GeV"}
+{"pattern": "physics.units", "text": "We use a 2 kg target.", "expect": "2 kg"}
+{"pattern": "physics.units", "text": "Run for 350 ms at 1 kHz.", "expect": "350 ms"}
+{"pattern": "physics.units", "text": "12 eV photons are low energy.", "expect": "12 eV"}
+{"pattern": "physics.units", "text": "Five apples (no unit) is not a unit.", "expect_null": true}
+{"pattern": "physics.units", "text": "12 m/s is not a unit alone (m/s is not in our list).", "expect_null": true}
+{"pattern": "physics.units", "text": "The page is 12 pages long.", "expect_null": true}
+{"pattern": "physics.units", "text": "We waited 3 minutes for 60 s.", "expect": "60 s"}
+{"pattern": "physics.units", "text": "12 g/mol is a derived unit not in the list.", "expect_null": true}
+
+{"pattern": "chem.formula", "text": "Water (H2O) and carbon dioxide (CO2) are abundant.", "expect": "H2O"}
+{"pattern": "chem.formula", "text": "Oxygen is O2; nitrogen is N2.", "expect": "O2"}
+{"pattern": "chem.formula", "text": "Methane CH4 is the simplest alkane.", "expect": "CH4"}
+{"pattern": "chem.formula", "text": "Glucose is C6H12O6.", "expect": "C6H12O6"}
+{"pattern": "chem.formula", "text": "Sulfuric acid H2SO4 is a strong acid.", "expect": "H2SO4"}
+{"pattern": "chem.formula", "text": "Salt is NaCl.", "expect": "NaCl"}
+{"pattern": "chem.formula", "text": "Hydrochloric acid HCl is in the stomach.", "expect": "HCl"}
+{"pattern": "chem.formula", "text": "Ammonia NH3 is pungent.", "expect": "NH3"}
+{"pattern": "chem.formula", "text": "Ethanol C2H5OH is the alcohol in drinks.", "expect": "C2H5OH"}
+{"pattern": "chem.formula", "text": "Benzene C6H6 is aromatic.", "expect": "C6H6"}
+{"pattern": "chem.formula", "text": "Propane C3H8 fuels the grill.", "expect": "C3H8"}
+{"pattern": "chem.formula", "text": "Methane CH4 and ethane C2H6 differ by a CH2 group.", "expect": "CH4"}
+{"pattern": "chem.formula", "text": "Teflon has C2F4 as a unit.", "expect_null": true}
+{"pattern": "chem.formula", "text": "H2O2 is hydrogen peroxide, not in our list.", "expect_null": true}
+{"pattern": "chem.formula", "text": "H2 and O2 alone are not on the formula list in this expression.", "expect": "H2"}
+{"pattern": "chem.formula", "text": "Calcium carbonate CaCO3 is chalk.", "expect": "CaCO3"}
+
+{"pattern": "bio.gene", "text": "Mutations in TP53 are common in tumors.", "expect": "TP53"}
+{"pattern": "bio.gene", "text": "BRCA1 and BRCA2 confer risk.", "expect": "BRCA1"}
+{"pattern": "bio.gene", "text": "EGFR signaling drives proliferation.", "expect_null": true}
+{"pattern": "bio.gene", "text": "We sequenced KRAS and NRAS.", "expect_null": true}
+{"pattern": "bio.gene", "text": "PTEN loss is observed.", "expect_null": true}
+{"pattern": "bio.gene", "text": "MYC amplification is a hallmark.", "expect_null": true}
+{"pattern": "bio.gene", "text": "RB1 controls the cell cycle.", "expect": "RB1"}
+{"pattern": "bio.gene", "text": "STK11 and KEAP1 are mutated.", "expect": "STK11"}
+{"pattern": "bio.gene", "text": "We measured ABCA1 expression.", "expect": "ABCA1"}
+{"pattern": "bio.gene", "text": "Water (CO2) is in the atmosphere.", "expect_null": true}
+{"pattern": "bio.gene", "text": "USA, DNA, RNA are not in our pattern (length or shape).", "expect_null": true}
+{"pattern": "bio.gene", "text": "h2o is too short and lowercase-start.", "expect_null": true}
+{"pattern": "bio.gene", "text": "In 2024, the lab moved.", "expect_null": true}
+{"pattern": "bio.gene", "text": "MNIST is a dataset, not a gene.", "expect_null": true}
+
+{"pattern": "bio.protein", "text": "p53 and Ras are central to cancer biology.", "expect": "p53"}
+{"pattern": "bio.protein", "text": "The Erk pathway transduces the signal.", "expect": "Erk"}
+{"pattern": "bio.protein", "text": "Akt and mTOR integrate growth signals.", "expect": "Akt"}
+{"pattern": "bio.protein", "text": "Stat3 is activated by cytokines.", "expect": "Stat3"}
+{"pattern": "bio.protein", "text": "TGFβ signaling is context-dependent.", "expect": "TGFβ"}
+{"pattern": "bio.protein", "text": "TNFα drives inflammation.", "expect": "TNFα"}
+{"pattern": "bio.protein", "text": "Hsp90 is a chaperone.", "expect": "Hsp90"}
+{"pattern": "bio.protein", "text": "Myc is a transcription factor.", "expect": "Myc"}
+{"pattern": "bio.protein", "text": "Fos and Jun form AP-1.", "expect": "Fos"}
+{"pattern": "bio.protein", "text": "The Ras-Raf-Mek-Erk cascade is canonical.", "expect": "Ras"}
+{"pattern": "bio.protein", "text": "pRB is phosphorylated by CDK4.", "expect": "pRB"}
+{"pattern": "bio.protein", "text": "The acid has a low pH of 5.3.", "expect": "pH"}
+{"pattern": "bio.protein", "text": "p300 is a histone acetyltransferase, not in our list.", "expect_null": true}
+{"pattern": "bio.protein", "text": "Section 4 has more details.", "expect_null": true}
+
+{"pattern": "bio.technique", "text": "We performed ChIP-seq and qPCR validation.", "expect": "ChIP-seq"}
+{"pattern": "bio.technique", "text": "RNA-seq revealed differential expression.", "expect": "RNA-seq"}
+{"pattern": "bio.technique", "text": "scRNA-seq profiles single cells.", "expect": "scRNA-seq"}
+{"pattern": "bio.technique", "text": "ATAC-seq maps chromatin accessibility.", "expect": "ATAC-seq"}
+{"pattern": "bio.technique", "text": "CRISPR/Cas9 edited the locus.", "expect": "CRISPR/Cas9"}
+{"pattern": "bio.technique", "text": "CRISPR alone was used to knock out the gene.", "expect": "CRISPR"}
+{"pattern": "bio.technique", "text": "We ran a Western blot to detect the protein.", "expect": "Western blot"}
+{"pattern": "bio.technique", "text": "ELISA quantified the secreted cytokine.", "expect": "ELISA"}
+{"pattern": "bio.technique", "text": "RT-PCR measured mRNA levels.", "expect": "RT-PCR"}
+{"pattern": "bio.technique", "text": "qRT-PCR confirmed the result.", "expect": "qRT-PCR"}
+{"pattern": "bio.technique", "text": "Hi-C revealed TAD structure.", "expect": "Hi-C"}
+{"pattern": "bio.technique", "text": "FISH localized the gene on the chromosome.", "expect": "FISH"}
+{"pattern": "bio.technique", "text": "IHC stained the tumor section.", "expect": "IHC"}
+{"pattern": "bio.technique", "text": "We used flow cytometry to sort cells.", "expect": "flow cytometry"}
+{"pattern": "bio.technique", "text": "Crispr (lowercase) is also a hit (case-insensitive).", "expect": "Crispr"}
+{"pattern": "bio.technique", "text": "Section 5 has the methods.", "expect_null": true}
+
+{"pattern": "bio.taxonomy", "text": "Escherichia coli is a model bacterium.", "expect": "Escherichia coli"}
+{"pattern": "bio.taxonomy", "text": "Drosophila melanogaster is a genetic model.", "expect": "Drosophila melanogaster"}
+{"pattern": "bio.taxonomy", "text": "Saccharomyces cerevisiae is a yeast.", "expect": "Saccharomyces cerevisiae"}
+{"pattern": "bio.taxonomy", "text": "Arabidopsis thaliana is a plant model.", "expect": "Arabidopsis thaliana"}
+{"pattern": "bio.taxonomy", "text": "Caenorhabditis elegans is a worm.", "expect": "Caenorhabditis elegans"}
+{"pattern": "bio.taxonomy", "text": "Mus musculus is the lab mouse.", "expect": "Mus musculus"}
+{"pattern": "bio.taxonomy", "text": "Rattus norvegicus is the lab rat.", "expect": "Rattus norvegicus"}
+{"pattern": "bio.taxonomy", "text": "Gallus gallus is the chicken.", "expect": "Gallus gallus"}
+{"pattern": "bio.taxonomy", "text": "Ecoli is informal; correct is Escherichia coli.", "expect": "Escherichia coli"}
+{"pattern": "bio.taxonomy", "text": "An electron is a particle.", "expect_null": true}
+{"pattern": "bio.taxonomy", "text": "The Mouse ran across the floor.", "expect_null": true}
+{"pattern": "bio.taxonomy", "text": "Apollo Eleven landed on the moon.", "expect_null": true}
+{"pattern": "bio.taxonomy", "text": "Ecoli is informal; correct is Escherichia coli.", "expect_null": true}
+
+{"pattern": "cs.venue", "text": "Published at NeurIPS 2024.", "expect": "NeurIPS 2024"}
+{"pattern": "cs.venue", "text": "Appeared in ICML 2023.", "expect": "ICML 2023"}
+{"pattern": "cs.venue", "text": "We presented at ICLR 2024.", "expect": "ICLR 2024"}
+{"pattern": "cs.venue", "text": "CVPR 2018 accepted the paper.", "expect": "CVPR 2018"}
+{"pattern": "cs.venue", "text": "ICCV 2019 is the venue.", "expect": "ICCV 2019"}
+{"pattern": "cs.venue", "text": "ECCV 2020 was virtual.", "expect": "ECCV 2020"}
+{"pattern": "cs.venue", "text": "EMNLP 2022 had the workshop.", "expect": "EMNLP 2022"}
+{"pattern": "cs.venue", "text": "ACL 2021 is the main conference.", "expect": "ACL 2021"}
+{"pattern": "cs.venue", "text": "KDD 2023 had the tutorial.", "expect": "KDD 2023"}
+{"pattern": "cs.venue", "text": "AAAI 2020 accepted the demo.", "expect": "AAAI 2020"}
+{"pattern": "cs.venue", "text": "NeurIPS'22 is the older form.", "expect": "NeurIPS'22"}
+{"pattern": "cs.venue", "text": "We submitted to NeurIPS, ICML, and ICLR.", "expect": "NeurIPS"}
+{"pattern": "cs.venue", "text": "Section 5 of the paper is unrelated.", "expect_null": true}
+{"pattern": "cs.venue", "text": "NeurIPS is the name of a conference.", "expect": "NeurIPS"}
+{"pattern": "cs.venue", "text": "A computer security conference, not in our list.", "expect_null": true}
+{"pattern": "cs.venue", "text": "Deep learning is a topic, not a venue.", "expect_null": true}
+
+{"pattern": "cs.model", "text": "We fine-tuned Llama-3 and GPT-4o on the same corpus.", "expect": "Llama-3"}
+{"pattern": "cs.model", "text": "BERT is the baseline.", "expect": "BERT"}
+{"pattern": "cs.model", "text": "We compare Llama 3 with Mistral.", "expect": "Llama 3"}
+{"pattern": "cs.model", "text": "RoBERTa is a robust BERT.", "expect": "RoBERTa"}
+{"pattern": "cs.model", "text": "T5 is the encoder-decoder baseline.", "expect": "T5"}
+{"pattern": "cs.model", "text": "We trained a Transformer from scratch.", "expect": "Transformer"}
+{"pattern": "cs.model", "text": "The CNN outperforms the RNN.", "expect": "CNN"}
+{"pattern": "cs.model", "text": "LSTM and GRU are gated RNNs.", "expect": "LSTM"}
+{"pattern": "cs.model", "text": "A GAN generates samples.", "expect": "GAN"}
+{"pattern": "cs.model", "text": "ResNet-50 is the vision baseline.", "expect": "ResNet-50"}
+{"pattern": "cs.model", "text": "EfficientNet is more efficient.", "expect": "EfficientNet"}
+{"pattern": "cs.model", "text": "ViT-16 is the transformer vision baseline.", "expect": "ViT-16"}
+{"pattern": "cs.model", "text": "GPT-4o is the multimodal model.", "expect": "GPT-4o"}
+{"pattern": "cs.model", "text": "GPT-3.5 turbo is older.", "expect": "GPT-3.5"}
+{"pattern": "cs.model", "text": "Diffusion models generate images.", "expect": "Diffusion"}
+{"pattern": "cs.model", "text": "A VAE encodes latent variables.", "expect": "VAE"}
+{"pattern": "cs.model", "text": "Mixtral is a mixture-of-experts model.", "expect": "Mixtral"}
+{"pattern": "cs.model", "text": "Section 4 is not a model.", "expect_null": true}
+{"pattern": "cs.model", "text": "The Bert (capitalized normally) baseline is from 2018.", "expect": "Bert"}
+
+{"pattern": "cs.dataset", "text": "Trained on MNIST and CIFAR-10.", "expect": "MNIST"}
+{"pattern": "cs.dataset", "text": "ImageNet is the standard benchmark.", "expect": "ImageNet"}
+{"pattern": "cs.dataset", "text": "We evaluate on GLUE.", "expect": "GLUE"}
+{"pattern": "cs.dataset", "text": "SuperGLUE is the harder version.", "expect": "SuperGLUE"}
+{"pattern": "cs.dataset", "text": "SQuAD is the reading-comprehension dataset.", "expect": "SQuAD"}
+{"pattern": "cs.dataset", "text": "COCO is the detection dataset.", "expect": "COCO"}
+{"pattern": "cs.dataset", "text": "MS-COCO is the same dataset with a prefix.", "expect": "MS-COCO"}
+{"pattern": "cs.dataset", "text": "CommonCrawl is the web corpus.", "expect": "CommonCrawl"}
+{"pattern": "cs.dataset", "text": "The Pile is the training corpus.", "expect": "The Pile"}
+{"pattern": "cs.dataset", "text": "WikiText is a small LM corpus.", "expect": "WikiText"}
+{"pattern": "cs.dataset", "text": "LAION is the image-text corpus.", "expect": "LAION"}
+{"pattern": "cs.dataset", "text": "HuggingFaceH4 is the eval suite.", "expect": "HuggingFaceH4"}
+{"pattern": "cs.dataset", "text": "CIFAR-100 is the harder version.", "expect": "CIFAR-100"}
+{"pattern": "cs.dataset", "text": "Section 5 lists datasets (not a dataset).", "expect_null": true}
+{"pattern": "cs.dataset", "text": "A novel is not a dataset.", "expect_null": true}

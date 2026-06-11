@@ -109,9 +109,10 @@ citation-nexus/
 │   ├── bridge/
 │   │   ├── client.ts            # extension → HTTP bridge
 │   │   └── protocol.md
-│   ├── assets/
-│   │   └── content.css          # highlight theme
-│   └── env.d.ts
+│   ├── cli/
+│   │   └── scan.ts              # batch scanner (used by goldset)
+│   └── assets/
+│       └── content.css          # highlight theme
 ├── bridge/
 │   ├── pyproject.toml
 │   ├── nexus_bridge/server.py
@@ -120,12 +121,43 @@ citation-nexus/
 │   ├── native_host.py
 │   ├── manifest.json
 │   └── README.md
+├── goldset/
+│   ├── README.md
+│   ├── data/
+│   │   ├── citations.jsonl      # 9 patterns × ~17 examples
+│   │   └── science.jsonl        # 15 patterns × ~17 examples
+│   ├── scripts/eval_goldset.py  # P/R/F1 eval + CI gate
+│   └── reports/latest.md        # last eval output
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── PATTERNS.md
 │   └── AGENT.md
 ├── demo/demo.html
 └── .github/workflows/ci.yml
+```
+
+## Goldset evaluation
+
+The `goldset/` directory holds ~430 hand-curated examples (positive and
+negative) across 24 patterns. The eval script (`goldset/scripts/eval_goldset.py`)
+spawns the TS registry once per file, scores TP/FP/FN/TN, computes P/R/F1
+per pattern, and gates the build on macro F1 ≥ 0.85. Latest run:
+
+| Metric | Score |
+|---|---:|
+| Macro precision | 0.996 |
+| Macro recall | 0.985 |
+| **Macro F1** | **0.989** |
+| Micro F1 | 0.989 |
+| Patterns at F1=1.00 | 21 / 24 |
+
+See `goldset/reports/latest.md` for the full per-pattern table and failure
+samples. To run locally:
+
+```bash
+npm ci
+python3 goldset/scripts/eval_goldset.py
+```
 ```
 
 ## Why this exists

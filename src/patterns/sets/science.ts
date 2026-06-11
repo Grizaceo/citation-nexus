@@ -16,22 +16,22 @@ export const scienceSet: PatternSet = {
       id: "math.theorem",
       label: "Math theorem",
       category: "math",
-      regex: "\\b(?:Theorem|Lemma|Corollary|Proposition|Conjecture|Claim|Remark)\\s+(\\d+(?:\\.\\d+)?)\\b",
+      regex: "\\b(?:Theorem|Lemma|Corollary|Proposition|Conjecture|Claim|Remark)\\s+(\\d+(?:\\.\\d+)*)\\b",
       tooltip: "Numbered mathematical statement",
     },
     {
       id: "math.definition",
       label: "Math definition",
       category: "math",
-      regex: "\\b(?:Definition|Def\\.?|Axiom|Hypothesis)\\s+(\\d+(?:\\.\\d+)?)\\b",
+      regex: "\\b(?:Definition|Def\\.?|Axiom|Hypothesis)\\s+(\\d+(?:\\.\\d+)*)\\b",
       tooltip: "Numbered definition",
     },
     {
       id: "math.equation",
       label: "Equation number",
       category: "math",
-      regex: "\\((?:eq\\.?|equation)\\s*\\d+\\)|\\(\\s*\\d+\\s*\\)\\s*$",
-      flags: "gm",
+      // Paren-enclosed numbers, optionally prefixed with eq/equation.
+      regex: "\\((?:eq\\.?|equation)?\\s*(\\d+)\\)",
       tooltip: "Equation reference",
     },
     {
@@ -54,14 +54,21 @@ export const scienceSet: PatternSet = {
       id: "physics.detector",
       label: "Detector / Lab",
       category: "physics",
-      regex: "\\b(?:ATLAS|CMS|LIGO|Virgo|IceCube|Fermilab|CERN|SLAC|KEK|DESY|Gran Sasso| Kamioka )(?:[- ]\\w+){0,3}\\b",
+      // Suffix is optional and must be a capitalised proper-noun segment
+      // (e.g. "CERN-LHC"), not any word that follows. This avoids
+      // matching the start of a sentence like "ATLAS measured the new...".
+      regex: "\\b(?:ATLAS|CMS|LIGO|Virgo|IceCube|Fermilab|CERN|SLAC|KEK|DESY)(?:[- ][A-Z][A-Za-z0-9]+){0,1}",
       tooltip: "Physics detector or laboratory",
     },
     {
       id: "physics.units",
       label: "Physical unit",
       category: "physics",
-      regex: "\\b\\d+(?:\\.\\d+)?\\s*(?:GeV|MeV|keV|TeV|fm|pm|nm|\\u00b5m|mm|cm|kg|eV)\\b",
+      // SI prefixes + a few particle-physics units. Bare `m` and `s`
+      // are intentionally excluded — they collide with prose ("a 5 m
+      // walk" vs "5 m" alone). Use km, mm, cm, etc. for length, and
+      // skip time unless paired with a prefix.
+      regex: "\\b\\d+(?:\\.\\d+)?\\s*(?:GeV|MeV|keV|TeV|fm|pm|nm|\\u00b5m|mm|cm|km|kg|eV|ps|ns|us|ms)\\b",
       tooltip: "Quantity with SI / particle-physics unit",
     },
 
@@ -70,6 +77,7 @@ export const scienceSet: PatternSet = {
       id: "chem.formula",
       label: "Chemical formula",
       category: "chemistry",
+      priority: 1,
       regex: "\\b(?:H2O|CO2|N2|O2|H2|Cl2|NaCl|HCl|H2SO4|HNO3|H3PO4|NH3|CH4|C2H6|C3H8|C6H6|C6H12O6|CH3OH|C2H5OH|CaCO3|Fe2O3|TiO2|SiO2)\\b",
       tooltip: "Common chemical formula",
     },
@@ -79,32 +87,43 @@ export const scienceSet: PatternSet = {
       id: "bio.gene",
       label: "Gene symbol",
       category: "biology",
-      regex: "\\b[A-Z][A-Z0-9]{1,4}\\d[A-Z0-9]?\\b",
-      tooltip: "HGNC-style gene symbol (e.g. TP53, BRCA1, EGFR)",
+      // Require a digit (TP53, BRCA1, RB1, ABCA1). All-letter
+      // symbols (EGFR, KRAS) would also match common CS/ML acronyms
+      // (MNIST, CIFAR) and the precision loss is too high to justify.
+      // priority: 0 (default) so explicit patterns win on overlap.
+      regex: "\\b[A-Z][A-Z0-9]{1,5}\\d[A-Z0-9]?\\b",
+      tooltip: "HGNC-style gene symbol (e.g. TP53, BRCA1, ABCA1)",
     },
     {
       id: "bio.protein",
       label: "Protein family",
       category: "biology",
-      regex: "\\b(?:p53|pRB|Ras|Raf|Mek|Erk|Akt|Stat\\d?|TGF[\\u03b1\\u03b2]|TNF[\\u03b1]|Hsp\\d+|Myc|Fos|Jun)\\b",
+      // No \b — JS \b is ASCII-only, breaks on Greek letters (TGFβ, TNFα).
+      // The names themselves are unique enough that no explicit boundary
+      // is needed.
+      regex: "(?:p53|pRB|Ras|Raf|Mek|Erk|Akt|Stat\\d?|TGF[αβ]|TNF[α]|Hsp\\d+|Myc|Fos|Jun|pH\\b)",
       tooltip: "Named protein or family",
     },
     {
       id: "bio.technique",
       label: "Biology technique",
       category: "biology",
+      // Case-insensitive — covers CRISPR, Crispr, crispr.
       regex: "\\b(?:qPCR|RT-PCR|qRT-PCR|ELISA|Western blot|Southern blot|Northern blot|CRISPR(?:/Cas\\d+)?|ChIP-seq|RNA-seq|scRNA-seq|ATAC-seq|Hi-C|FISH|IHC|flow cytometry)\\b",
+      flags: "gi",
       tooltip: "Wet-lab or sequencing technique",
     },
     {
       id: "bio.taxonomy",
       label: "Binomial nomenclature",
       category: "biology",
-      // Genus names are typically 5+ letters, or a known short one
-      // (Mus, Rattus, Gallus, Apis, Bos, Sus). Filtering out common
-      // English sentence-starters (The, This, It, A, An, …) at 3-4
-      // chars avoids matching "The muon decays" or "An electron".
-      regex: "\\b(?:Mus|Rattus|Gallus|Apis|Bos|Sus)\\s+[a-z]{3,}\\b|\\b[A-Z][a-z]{4,}\\s+[a-z]{3,}\\b",
+      // Curated list of common model + pathogenic genera. A 7+ letter
+      // generic branch (e.g. `\b[A-Z][a-z]{6,}\b`) was tried and
+      // rejected: it matched English prose like "Fermilab announced"
+      // and "Transformer from". Genus names in real biological text
+      // are almost always a small set; a curated list is the
+      // precision-preserving choice.
+      regex: "\\b(?:Escherichia|Drosophila|Saccharomyces|Arabidopsis|Caenorhabditis|Toxoplasma|Plasmodium|Mycobacterium|Staphylococcus|Streptococcus|Salmonella|Listeria|Helicobacter|Pseudomonas|Mycoplasma|Candida|Neurospora|Aspergillus|Zea|Oryza|Triticum|Glycine|Rattus|Gallus|Apis|Bos|Sus|Homo)\\s+[a-z]{3,}\\b|\\bMus\\s+musculus\\b",
       tooltip: "Genus + species (binomial)",
     },
 
@@ -113,14 +132,18 @@ export const scienceSet: PatternSet = {
       id: "cs.venue",
       label: "CS venue",
       category: "cs",
-      regex: "\\b(?:NeurIPS|ICML|ICLR|ACL|EMNLP|NAACL|CVPR|ICCV|ECCV|AAAI|IJCAI|UAI|KDD|SIGGRAPH|CHI|USENIX|SOSP|OSDI|FAST|ASPLOS|POPL|PLDI)\\s*(?:'\\d{2,4})?",
+      // Either space-then-year or apostrophe-then-year. The year is
+      // optional; without it we get just the venue name.
+      regex: "\\b(?:NeurIPS|ICML|ICLR|ACL|EMNLP|NAACL|CVPR|ICCV|ECCV|AAAI|IJCAI|UAI|KDD|SIGGRAPH|CHI|USENIX|SOSP|OSDI|FAST|ASPLOS|POPL|PLDI)(?:\\s\\d{2,4}|'\\d{2,4})?",
       tooltip: "Major CS / ML conference",
     },
     {
       id: "cs.model",
       label: "ML model family",
       category: "cs",
+      // Case-insensitive — covers "Transformer" and "transformer" both.
       regex: "\\b(?:Transformer|GPT-[1-9](?:\\.\\d+)?[A-Z]?|BERT(?:\\-[A-Za-z]+)?|RoBERTa|T5|Llama(?:[-\\s]?\\d+)?|LLaMA|Mistral|Mixtral|Gemma|DeepSeek|Qwen|Claude|GPT-4o|RNN|LSTM|GRU|CNN|GAN|VAE|Diffusion|ResNet(?:-\\d+)?|EfficientNet|ViT(?:-\\d+)?)\\b",
+      flags: "gi",
       tooltip: "Named ML architecture or model",
     },
     {

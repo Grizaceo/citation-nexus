@@ -12,7 +12,12 @@ export const citationsSet: PatternSet = {
       id: "arxiv.id",
       label: "arXiv ID",
       category: "citation",
-      regex: "(?:arXiv:|(?<![\\w/]))(\\d{4}\\.\\d{4,5}(?:v\\d+)?)\\b",
+      priority: 1,
+      // Strict: require `arXiv:` prefix. Bare id matching (without prefix)
+      // would collide with phone numbers, version strings, and dates —
+      // precision loss outweighs the small recall gain. Use the URL pattern
+      // (`arxiv.abs`) for in-the-wild citations.
+      regex: "arXiv:\\s*(\\d{4}\\.\\d{4,5}(?:v\\d+)?)",
       flags: "gi",
       tooltip: "arXiv preprint",
     },
@@ -44,16 +49,17 @@ export const citationsSet: PatternSet = {
       id: "pmid",
       label: "PubMed ID",
       category: "citation",
-      regex: "(?:PMID:?\\s*|pubmed\\.ncbi\\.nlm\\.nih\\.gov/)(\\d{6,9})",
-      flags: "gi",
+      // Case-sensitive: PMID is an acronym, never written lowercase.
+      regex: "(?:PMID:?\\s*|pubmed\\.ncbi\\.nlm\\.nih\\.gov/)(\\d{6,9})(?!\\d)",
+      flags: "g",
       tooltip: "PubMed reference",
     },
     {
       id: "pmcid",
       label: "PMC ID",
       category: "citation",
-      regex: "(?:\\b|(?:pmc\\.ncbi\\.nlm\\.nih\\.gov/articles/))(PMC\\d{4,8})",
-      flags: "gi",
+      regex: "(?:\\b|(?:pmc\\.ncbi\\.nlm\\.nih\\.gov/articles/))(PMC\\d{4,8})(?!\\d)",
+      flags: "g",
       tooltip: "PubMed Central",
     },
     {
@@ -68,7 +74,7 @@ export const citationsSet: PatternSet = {
       id: "biorxiv",
       label: "bioRxiv",
       category: "citation",
-      regex: "(?:biorxiv\\.org/content/)(10\\.\\d{4,9}/[-._;()/:A-Z0-9]+)",
+      regex: "(?:(?:www\\.)?biorxiv\\.org/content/)(10\\.\\d{4,9}/[-._;()/:A-Z0-9]+)",
       flags: "gi",
       tooltip: "bioRxiv preprint",
     },
@@ -76,7 +82,7 @@ export const citationsSet: PatternSet = {
       id: "medrxiv",
       label: "medRxiv",
       category: "citation",
-      regex: "(?:medrxiv\\.org/content/)(10\\.\\d{4,9}/[-._;()/:A-Z0-9]+)",
+      regex: "(?:(?:www\\.)?medrxiv\\.org/content/)(10\\.\\d{4,9}/[-._;()/:A-Z0-9]+)",
       flags: "gi",
       tooltip: "medRxiv preprint",
     },
