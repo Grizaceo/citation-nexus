@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Citation Nexus — demo</title>
+    <style>
+      :root {
+        --bg: #1a1a1a;
+        --fg: #e0e0e0;
+        --muted: #888;
+      }
+      body {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+        line-height: 1.7;
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 2rem;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      h1 { font-weight: 600; font-size: 1.4rem; }
+      .nx-highlight {
+        position: relative;
+        border-radius: 2px;
+        padding: 0 1px;
+        cursor: help;
+      }
+      .nx-highlight::after {
+        content: attr(data-nx-tip);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%) translateY(-4px);
+        background: #111;
+        color: #f0f0f0;
+        border: 1px solid #333;
+        font-size: 11px;
+        white-space: nowrap;
+        padding: 4px 7px;
+        border-radius: 4px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 100ms ease 50ms;
+      }
+      .nx-highlight:hover::after { opacity: 1; }
+      .nx-highlight-citation { background: rgba(70, 130, 255, 0.18); border-bottom: 1px solid rgba(70, 130, 255, 0.65); }
+      .nx-highlight-math { background: rgba(255, 140, 0, 0.20); border-bottom: 2px solid #ff8c00; }
+      .nx-highlight-physics { background: rgba(30, 144, 255, 0.15); border-bottom: 1px solid #1e90ff; }
+      .nx-highlight-biology { background: rgba(0, 200, 80, 0.15); border-bottom: 1px solid #00c850; }
+      .nx-highlight-cs { background: rgba(200, 100, 240, 0.15); border-bottom: 1px dashed #c864f0; }
+      .nx-highlight-chemistry { background: rgba(255, 200, 50, 0.20); border-bottom: 1px solid #d4a017; }
+    </style>
+  </head>
+  <body>
+    <h1>Citation Nexus — sample text</h1>
+    <p>
+      Recent work on transformers (Vaswani et al., arXiv:1706.03762) and
+      large language models like Llama-3 and GPT-4o has reshaped the
+      field. We evaluate on MNIST and CIFAR-10 and report results at
+      NeurIPS 2024.
+    </p>
+    <p>
+      Mathematically, by Theorem 1.2 we have O(n log n) convergence. Use
+      Definition 3.1 to define the loss.
+    </p>
+    <p>
+      The ATLAS collaboration observed a Z boson at 91.2 GeV, and CMS
+      later confirmed the discovery. The muon lifetime is 2.2 us.
+    </p>
+    <p>
+      In TP53-mutant tumors, p53 and Ras signalling drive growth. We
+      validated with ChIP-seq and qPCR.
+    </p>
+    <p>
+      Water (H2O) and carbon dioxide (CO2) are abundant in the atmosphere.
+    </p>
+  </body>
+</html>

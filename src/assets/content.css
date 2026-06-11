@@ -1,0 +1,91 @@
+/* Citation Nexus — Content highlight styles
+ * Port of the nexum highlighter theme (dark) plus a light variant.
+ * Inline, non-intrusive, with tooltip on hover.
+ */
+
+.nx-highlight {
+  position: relative;
+  border-radius: 2px;
+  padding: 0 1px;
+  cursor: help;
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+
+.nx-highlight:hover {
+  box-shadow: 0 0 0 1px currentColor inset;
+}
+
+/* Tooltip via attribute selector — no JS listeners required */
+.nx-highlight::after {
+  content: attr(data-nx-tip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background: #111;
+  color: #f0f0f0;
+  border: 1px solid #333;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.3;
+  white-space: nowrap;
+  padding: 4px 7px;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 2147483647;
+  transition: opacity 100ms ease 50ms;
+}
+.nx-highlight:hover::after {
+  opacity: 1;
+}
+
+/* ── Citation (academic, code) ───────────────────────────────────── */
+.nx-highlight-citation {
+  background: rgba(70, 130, 255, 0.18);
+  border-bottom: 1px solid rgba(70, 130, 255, 0.65);
+  color: inherit;
+}
+
+/* ── Math ───────────────────────────────────────────────────────── */
+.nx-highlight-math {
+  background: rgba(255, 140, 0, 0.20);
+  border-bottom: 2px solid #ff8c00;
+}
+
+/* ── Physics ────────────────────────────────────────────────────── */
+.nx-highlight-physics {
+  background: rgba(30, 144, 255, 0.15);
+  border-bottom: 1px solid #1e90ff;
+}
+
+/* ── Biology ────────────────────────────────────────────────────── */
+.nx-highlight-biology {
+  background: rgba(0, 200, 80, 0.15);
+  border-bottom: 1px solid #00c850;
+}
+
+/* ── CS / ML ────────────────────────────────────────────────────── */
+.nx-highlight-cs {
+  background: rgba(200, 100, 240, 0.15);
+  border-bottom: 1px dashed #c864f0;
+}
+
+/* ── Chemistry ──────────────────────────────────────────────────── */
+.nx-highlight-chemistry {
+  background: rgba(255, 200, 50, 0.20);
+  border-bottom: 1px solid #d4a017;
+}
+
+/* ── Default / catch-all ───────────────────────────────────────── */
+.nx-highlight-default {
+  background: rgba(128, 128, 128, 0.10);
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .nx-highlight,
+  .nx-highlight::after {
+    transition: none;
+  }
+}

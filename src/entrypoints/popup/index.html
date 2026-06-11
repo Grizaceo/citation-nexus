@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Citation Nexus</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="nx-popup-header">
+      <h1>Citation Nexus</h1>
+      <p class="nx-popup-sub" id="nx-sub">Scanning…</p>
+    </header>
+
+    <main class="nx-popup-main">
+      <section class="nx-stats" id="nx-stats">
+        <span class="nx-stat" id="nx-stat-total">0</span>
+        <span class="nx-stat-label">findings</span>
+      </section>
+
+      <section class="nx-categories" id="nx-categories"></section>
+
+      <section class="nx-actions">
+        <button class="nx-btn" id="nx-rescan">Rescan tab</button>
+        <button class="nx-btn" id="nx-options">Options</button>
+      </section>
+
+      <details class="nx-raw">
+        <summary>Raw findings</summary>
+        <pre id="nx-raw"></pre>
+      </details>
+    </main>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

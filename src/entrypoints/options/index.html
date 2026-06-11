@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Citation Nexus · Options</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="nx-options">
+      <h1>Citation Nexus</h1>
+
+      <section>
+        <h2>Pattern sets</h2>
+        <p class="nx-help">
+          Toggle which pattern sets run on every page. Changes are saved
+          automatically.
+        </p>
+        <ul id="nx-sets" class="nx-list"></ul>
+      </section>
+
+      <section>
+        <h2>Bridge</h2>
+        <p class="nx-help">
+          Local HTTP bridge for programmatic import (default port 3002). Must
+          be running for import to work; everything else runs locally in the
+          extension.
+        </p>
+        <label>
+          <span>Bridge URL</span>
+          <input id="nx-bridge-url" type="url" />
+        </label>
+      </section>
+
+      <section>
+        <h2>About</h2>
+        <p class="nx-help">
+          Citation Nexus detects academic citations and English-language
+          science concepts on web pages and lets you import or copy them. The
+          full content script, pattern registry, and bridge protocol are
+          documented in the <code>docs/</code> folder.
+        </p>
+      </section>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

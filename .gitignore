@@ -1,0 +1,17 @@
+node_modules/
+.wxt/
+.output/
+dist/
+*.log
+.DS_Store
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+.coverage
+.env
+.env.local
