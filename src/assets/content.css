@@ -1,18 +1,54 @@
 /* Citation Nexus — Content highlight styles
- * Port of the nexum highlighter theme (dark) plus a light variant.
- * Inline, non-intrusive, with tooltip on hover.
+ * Two layers:
+ *   - .nx-sentence: subtle block around any sentence containing ≥1 match
+ *   - .nx-highlight.*: vibrant per-category color on the matched term
+ *
+ * Color palette is high-contrast against both light and dark page
+ * backgrounds. Tooltip on the keyword uses ::after.
  */
 
+/* ── SENTENCE-LEVEL: subtle but unmistakable ───────────────────── */
+.nx-sentence {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 213, 79, 0.22) 0%,
+    rgba(255, 213, 79, 0.10) 100%
+  );
+  border-left: 3px solid #f9a825;
+  border-radius: 2px;
+  padding: 0 4px 0 2px;
+  margin: 0 0 0 -2px;
+  box-shadow: inset 0 0 0 1px rgba(249, 168, 37, 0.10);
+  /* keep the sentence on its own baseline */
+  display: inline;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.nx-sentence:hover {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 213, 79, 0.35) 0%,
+    rgba(255, 213, 79, 0.18) 100%
+  );
+}
+
+/* ── KEYWORD-LEVEL: vibrant per-category ──────────────────────── */
 .nx-highlight {
   position: relative;
+  display: inline;
   border-radius: 2px;
-  padding: 0 1px;
+  padding: 1px 3px;
+  margin: 0 -1px;
+  font-weight: 600;
   cursor: help;
-  transition: background 120ms ease, box-shadow 120ms ease;
+  box-shadow: 0 0 0 1px currentColor;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 .nx-highlight:hover {
-  box-shadow: 0 0 0 1px currentColor inset;
+  filter: brightness(1.1);
 }
 
 /* Tooltip via attribute selector — no JS listeners required */
@@ -40,50 +76,58 @@
   opacity: 1;
 }
 
-/* ── Citation (academic, code) ───────────────────────────────────── */
+/* ── Citation (academic, code) — dodger blue ─────────────────── */
 .nx-highlight-citation {
-  background: rgba(70, 130, 255, 0.18);
-  border-bottom: 1px solid rgba(70, 130, 255, 0.65);
-  color: inherit;
+  background: #4682ff;
+  color: #ffffff;
+  box-shadow: 0 0 0 1px #2d5fbf;
 }
 
-/* ── Math ───────────────────────────────────────────────────────── */
+/* ── Math — vivid orange ────────────────────────────────────── */
 .nx-highlight-math {
-  background: rgba(255, 140, 0, 0.20);
-  border-bottom: 2px solid #ff8c00;
+  background: #ff8c00;
+  color: #1a1a1a;
+  box-shadow: 0 0 0 1px #cc6f00;
 }
 
-/* ── Physics ────────────────────────────────────────────────────── */
+/* ── Physics — deep sky blue ────────────────────────────────── */
 .nx-highlight-physics {
-  background: rgba(30, 144, 255, 0.15);
-  border-bottom: 1px solid #1e90ff;
+  background: #1e90ff;
+  color: #ffffff;
+  box-shadow: 0 0 0 1px #0066cc;
 }
 
-/* ── Biology ────────────────────────────────────────────────────── */
+/* ── Biology — emerald green ────────────────────────────────── */
 .nx-highlight-biology {
-  background: rgba(0, 200, 80, 0.15);
-  border-bottom: 1px solid #00c850;
+  background: #00c853;
+  color: #ffffff;
+  box-shadow: 0 0 0 1px #00963e;
 }
 
-/* ── CS / ML ────────────────────────────────────────────────────── */
+/* ── CS / ML — magenta ──────────────────────────────────────── */
 .nx-highlight-cs {
-  background: rgba(200, 100, 240, 0.15);
-  border-bottom: 1px dashed #c864f0;
+  background: #d336d3;
+  color: #ffffff;
+  box-shadow: 0 0 0 1px #a020a0;
 }
 
-/* ── Chemistry ──────────────────────────────────────────────────── */
+/* ── Chemistry — saturated gold ─────────────────────────────── */
 .nx-highlight-chemistry {
-  background: rgba(255, 200, 50, 0.20);
-  border-bottom: 1px solid #d4a017;
+  background: #ffb300;
+  color: #1a1a1a;
+  box-shadow: 0 0 0 1px #cc8f00;
 }
 
-/* ── Default / catch-all ───────────────────────────────────────── */
+/* ── Default / catch-all ───────────────────────────────────── */
 .nx-highlight-default {
-  background: rgba(128, 128, 128, 0.10);
+  background: #9e9e9e;
+  color: #ffffff;
+  box-shadow: 0 0 0 1px #757575;
 }
 
 /* Respect users who prefer reduced motion */
 @media (prefers-reduced-motion: reduce) {
+  .nx-sentence,
   .nx-highlight,
   .nx-highlight::after {
     transition: none;

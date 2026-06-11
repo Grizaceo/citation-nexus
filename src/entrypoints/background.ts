@@ -79,7 +79,7 @@ export default defineBackground(() => {
           if (tabId !== undefined) {
             chrome.scripting.executeScript({
               target: { tabId },
-              files: ["content.js"],
+              files: ["content-scripts/content.js"],
             });
           }
         });
