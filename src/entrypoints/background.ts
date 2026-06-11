@@ -21,10 +21,12 @@ const MSG = {
 const tabStates = new Map<number, TabState>();
 
 export default defineBackground(() => {
-  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     switch (msg.type) {
       case MSG.CITATIONS_UPDATE: {
-        const tabId = msg.senderTabId ?? -1;
+        // sender.tab.id is set for messages from content scripts; fall
+        // back to senderTabId in the payload (e.g. for tests / devtools).
+        const tabId = sender.tab?.id ?? msg.senderTabId ?? -1;
         tabStates.set(tabId, {
           url: msg.payload.url,
           title: msg.payload.title,
