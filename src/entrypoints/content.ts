@@ -2,6 +2,7 @@
 // Scans the active page, applies registered PatternSets, highlights matches,
 // and reports them to the background worker.
 
+import "@/assets/content.css";
 import { applyPatterns, getDefaultRegistry } from "@/patterns/registry";
 import { renderHighlights } from "@/patterns/highlight";
 
