@@ -34,18 +34,54 @@ interface Sentence {
   text: string;
 }
 
-const SENTENCE_RE = /[^.!?\n]+[.!?]+(?=\s|$)|[^.!?\n]+$/g;
+const SENTENCE_RE = null; // (formerly used a regex; switched to char-loop for decimal-safety)
 
-function findSentences(text: string): Sentence[] {
+/** A `.` is a decimal point only if the surrounding digit runs are
+ *  short (1–2 before, 1–3 after). Long runs like "arXiv:2401.01234"
+ *  or "version 1.2.3.4" are NOT decimals and the dot should split. */
+function isDecimalContext(text: string, dotPos: number): boolean {
+  let beforeLen = 0;
+  for (let i = dotPos - 1; i >= 0 && /\d/.test(text.charAt(i)); i--) beforeLen++;
+  let afterLen = 0;
+  for (let i = dotPos + 1; i < text.length && /\d/.test(text.charAt(i)); i++) afterLen++;
+  return beforeLen >= 1 && beforeLen <= 2 && afterLen >= 1 && afterLen <= 3;
+}
+
+/** Returns true if `pos` is a sentence boundary. A `.`, `!`, or `?` is
+ *  a boundary only when it is NOT a decimal (e.g. 1.2) and the next
+ *  non-whitespace char is uppercase, an opening quote/bracket, or end
+ *  of string. */
+function isBoundary(text: string, pos: number): boolean {
+  const c = text.charAt(pos);
+  if (c !== "." && c !== "!" && c !== "?") return false;
+  if (c === "." && isDecimalContext(text, pos)) return false;
+  let j = pos + 1;
+  while (j < text.length && /\s/.test(text.charAt(j))) j++;
+  if (j >= text.length) return true;
+  const next = text.charAt(j);
+  return /[A-Z(\["'¿]/.test(next);
+}
+
+export function findSentences(text: string): Sentence[] {
   const out: Sentence[] = [];
-  let m: RegExpExecArray | null;
-  SENTENCE_RE.lastIndex = 0;
-  while ((m = SENTENCE_RE.exec(text)) !== null) {
-    if (m[0].length === 0) {
-      SENTENCE_RE.lastIndex++;
-      continue;
-    }
-    out.push({ start: m.index, end: m.index + m[0].length, text: m[0] });
+  let sentStart = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charAt(i);
+    if (c !== "." && c !== "!" && c !== "?") continue;
+    if (!isBoundary(text, i)) continue;
+    out.push({
+      start: sentStart,
+      end: i + 1,
+      text: text.slice(sentStart, i + 1),
+    });
+    sentStart = i + 1;
+  }
+  if (sentStart < text.length) {
+    out.push({
+      start: sentStart,
+      end: text.length,
+      text: text.slice(sentStart),
+    });
   }
   return out;
 }
