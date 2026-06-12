@@ -56,8 +56,9 @@ recipe to add a new pattern or set.
    ```
 
 2. **Native messaging host** — Chrome calls a small Python binary
-   (`agent/native_host.py`) that forwards to the bridge. See
-   [`agent/README.md`](agent/README.md).
+   (`agent/native_host.py`) that exposes the same `download`
+   action (writes to the same vault/papers/ dir). The
+   extension's popup uses this path. See [`agent/README.md`](agent/README.md).
 
 3. **CDP / kimi-webbridge** — control Chrome from a CLI agent and *see*
    the popup. See [`docs/AGENT.md`](docs/AGENT.md).
