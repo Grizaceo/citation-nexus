@@ -43,18 +43,32 @@ export default defineContentScript({
         if (!chrome.runtime?.id) return;
         isRendering = true;
         try {
-          runScanCycle(document.body, registry, page, (msg) => {
+          const n = runScanCycle(document.body, registry, page, (msg) => {
             // Same guard at the call site: sendMessage is the actual
             // thing that throws, and we want to swallow any race
             // between the runtime.id check and the call.
             if (!chrome.runtime?.id) return;
             try {
+              // Diagnostic: log every send so the user can verify in
+              // DevTools console that the message reached the background.
+              // Cheap, single line, prefixed for grep.
+              if (typeof console !== "undefined") {
+                console.debug(
+                  `[citation-nexus] CITATIONS_UPDATE findings=${msg.payload?.findings?.length ?? 0} url=${msg.payload?.url?.slice(0, 60) ?? ""}`
+                );
+              }
               chrome.runtime.sendMessage(msg);
-            } catch {
-              // Context went away mid-call. Nothing to do — a newer
-              // content script will be in charge soon.
+            } catch (e) {
+              if (typeof console !== "undefined") {
+                console.debug(
+                  `[citation-nexus] sendMessage failed: ${String(e)}`
+                );
+              }
             }
           });
+          if (typeof console !== "undefined" && n > 0) {
+            console.debug(`[citation-nexus] scan found ${n} matches`);
+          }
         } finally {
           // Wait a tick so the observer's own-trigger fires (and is
           // ignored) before we re-enable.
