@@ -9,7 +9,7 @@ import { runScanCycle } from "@/lib/content-runner";
 export default defineContentScript({
   matches: ["<all_urls>"],
   runAt: "document_idle",
-  main() {
+  main(ctx) {
     const registry = getDefaultRegistry();
     const page = { url: location.href, title: document.title };
 
@@ -22,15 +22,31 @@ export default defineContentScript({
     let isRendering = false;
 
     function runScan() {
+      // When the extension is reloaded, the content script's
+      // chrome.runtime context is invalidated: chrome.runtime.id
+      // becomes null and any further sendMessage throws "Extension
+      // context invalidated". Skip the whole run in that case —
+      // a fresh content script from the new build will replace us
+      // on the next page load.
+      if (!chrome.runtime?.id) return;
       isRendering = true;
       try {
         runScanCycle(document.body, registry, page, (msg) => {
-          chrome.runtime.sendMessage(msg);
+          // Same guard at the call site: sendMessage is the actual
+          // thing that throws, and we want to swallow any race
+          // between the runtime.id check and the call.
+          if (!chrome.runtime?.id) return;
+          try {
+            chrome.runtime.sendMessage(msg);
+          } catch {
+            // Context went away mid-call. Nothing to do — a newer
+            // content script will be in charge soon.
+          }
         });
       } finally {
         // Wait a tick so the observer's own-trigger fires (and is
         // ignored) before we re-enable.
-        setTimeout(() => {
+        ctx.setTimeout(() => {
           isRendering = false;
         }, 100);
       }
@@ -41,7 +57,10 @@ export default defineContentScript({
 
     // Second pass: SPAs (YouTube, Reddit, arxiv) often inject content
     // *after* document_idle. A 2s timer catches the most common case.
-    setTimeout(runScan, 2000);
+    // Use ctx.setTimeout so the timer is auto-cleared if the context
+    // is invalidated (extension reload) — otherwise the timer keeps
+    // firing against a dead runtime.
+    ctx.setTimeout(runScan, 2000);
 
     // Third pass: MutationObserver for SPAs that mutate later (e.g.
     // arxiv's MathJax re-render, infinite scroll). We debounce to
@@ -50,18 +69,21 @@ export default defineContentScript({
     let pending = false;
     const observer = new MutationObserver(() => {
       if (isRendering) return;
+      if (!chrome.runtime?.id) return;
       if (pending) return;
       pending = true;
-      setTimeout(() => {
+      ctx.setTimeout(() => {
         pending = false;
         runScan();
       }, 800);
     });
     observer.observe(document.body, { childList: true, subtree: true });
 
-    // Also re-scan on URL change (SPA route change).
+    // Also re-scan on URL change (SPA route change). ctx.setInterval
+    // auto-clears on context invalidation, so this won't keep firing
+    // against a dead runtime after the extension is reloaded.
     let lastUrl = location.href;
-    const urlWatcher = setInterval(() => {
+    ctx.setInterval(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
         page.url = location.href;
