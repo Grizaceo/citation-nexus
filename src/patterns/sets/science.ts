@@ -64,11 +64,13 @@ export const scienceSet: PatternSet = {
       id: "physics.units",
       label: "Physical unit",
       category: "physics",
-      // SI prefixes + a few particle-physics units. Bare `m` and `s`
-      // are intentionally excluded — they collide with prose ("a 5 m
-      // walk" vs "5 m" alone). Use km, mm, cm, etc. for length, and
-      // skip time unless paired with a prefix.
-      regex: "\\b\\d+(?:\\.\\d+)?\\s*(?:GeV|MeV|keV|TeV|fm|pm|nm|\\u00b5m|mm|cm|km|kg|eV|ps|ns|us|ms)\\b",
+      // Particle-physics and microscopy units. Deliberately omitted
+      // km / mm / cm / m / s because they collide with geographic
+      // distance (earthquake depth, road distance, object size) and
+      // time (seconds). The energy and nuclear-scale units are
+      // unambiguous in scientific writing.
+      regex:
+        "\\b\\d+(?:\\.\\d+)?\\s*(?:GeV|MeV|keV|TeV|fm|pm|nm|\\u00b5m|kg|eV|ps|ns|us|ms)\\b",
       tooltip: "Quantity with SI / particle-physics unit",
     },
 
@@ -98,10 +100,11 @@ export const scienceSet: PatternSet = {
       id: "bio.protein",
       label: "Protein family",
       category: "biology",
-      // No \b — JS \b is ASCII-only, breaks on Greek letters (TGFβ, TNFα).
-      // The names themselves are unique enough that no explicit boundary
-      // is needed.
-      regex: "(?:p53|pRB|Ras|Raf|Mek|Erk|Akt|Stat\\d?|TGF[αβ]|TNF[α]|Hsp\\d+|Myc|Fos|Jun|pH\\b)",
+      // High-specificity protein/gene names that almost never
+      // collide with everyday English. Dropped: Jun (too often the
+      // month), Myc / Fos (common words outside biology), pH
+      // (commonly a unit on its own).
+      regex: "(?:p53|pRB|Ras|Raf|Mek|Erk|Akt|Stat\\d?|TGF[αβ]|TNF[α]|Hsp\\d+)",
       tooltip: "Named protein or family",
     },
     {

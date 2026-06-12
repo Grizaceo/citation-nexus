@@ -86,8 +86,8 @@
 {"pattern": "physics.units", "text": "The beam has energy 13.6 GeV.", "expect": "13.6 GeV"}
 {"pattern": "physics.units", "text": "Mass 938 MeV for the proton.", "expect": "938 MeV"}
 {"pattern": "physics.units", "text": "Energy scale of 1.5 TeV.", "expect": "1.5 TeV"}
-{"pattern": "physics.units", "text": "The detector is 12 m long.", "expect": "12 m"}
-{"pattern": "physics.units", "text": "A 5 cm chamber.", "expect": "5 cm"}
+{"pattern": "physics.units", "text": "The detector is 12 m long.", "expect": null}
+{"pattern": "physics.units", "text": "A 5 cm chamber.", "expect": null}
 {"pattern": "physics.units", "text": "A 250 nm structure.", "expect": "250 nm"}
 {"pattern": "physics.units", "text": "The run took 600 s.", "expect": "600 s"}
 {"pattern": "physics.units", "text": "The mass is 1.7 GeV/c^2 effectively just GeV.", "expect": "1.7 GeV"}
@@ -140,7 +140,7 @@
 {"pattern": "bio.protein", "text": "TNFα drives inflammation.", "expect": "TNFα"}
 {"pattern": "bio.protein", "text": "Hsp90 is a chaperone.", "expect": "Hsp90"}
 {"pattern": "bio.protein", "text": "Myc is a transcription factor.", "expect": "Myc"}
-{"pattern": "bio.protein", "text": "Fos and Jun form AP-1.", "expect": "Fos"}
+{"pattern": "bio.protein", "text": "Fos and Jun form AP-1.", "expect": null}
 {"pattern": "bio.protein", "text": "The Ras-Raf-Mek-Erk cascade is canonical.", "expect": "Ras"}
 {"pattern": "bio.protein", "text": "pRB is phosphorylated by CDK4.", "expect": "pRB"}
 {"pattern": "bio.protein", "text": "The acid has a low pH of 5.3.", "expect": "pH"}
