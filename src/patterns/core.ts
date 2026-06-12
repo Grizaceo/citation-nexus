@@ -67,3 +67,20 @@ export interface Finding {
   end: number; // exclusive
   node: Text; // source DOM text node
 }
+
+/** Like Finding but without the DOM node reference. Used by the
+ *  pure (text-only) scan path that the CLI / goldset use. */
+export interface PureFinding {
+  patternId: string;
+  category: Category;
+  label: string;
+  text: string;
+  start: number;
+  end: number;
+  /** Full match length before any capture-group extraction. Used to
+   *  break ties in overlap resolution (longer = more specific). */
+  originalLength: number;
+  /** Pattern priority. Higher wins on full ties (same start, same
+   *  originalLength). Default 0. */
+  priority: number;
+}

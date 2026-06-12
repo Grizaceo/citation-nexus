@@ -1,7 +1,6 @@
-// Citation Nexus — Pattern Registry
-// Compiles PatternSets into a single in-memory registry, then exposes
-// applyPatterns() to scan text (pure, no DOM) and applyPatternsToDom()
-// to walk a DOM subtree.
+// Citation Nexus — Pattern registry
+// Compiles PatternDefs into regexes, applies them to text (pure or DOM),
+// resolves overlaps, and applies context disqualifiers.
 
 import type {
   Category,
@@ -9,60 +8,50 @@ import type {
   Finding,
   PatternDef,
   PatternSet,
+  PureFinding,
 } from "./core";
 import { citationsSet } from "./sets/citations";
 import { scienceSet } from "./sets/science";
 
+/** PatternDef with the regex compiled. */
+interface InternalPattern extends CompiledPattern {
+  excludeInSentence: string[];
+}
+
 export class PatternRegistry {
-  private compiled: CompiledPattern[] = [];
-
+  private compiled: InternalPattern[] = [];
   register(set: PatternSet): void {
-    for (const def of set.patterns) {
-      this.compiled.push(compile(def));
-    }
+    for (const p of set.patterns) this.compiled.push(compile(p));
   }
-
-  all(): CompiledPattern[] {
+  all(): InternalPattern[] {
     return this.compiled.slice();
   }
-
-  byCategory(cat: string): CompiledPattern[] {
-    return this.compiled.filter((p) => p.category === cat);
+  byCategory(c: Category): InternalPattern[] {
+    return this.compiled.filter((p) => p.category === c);
   }
 }
 
-function compile(def: PatternDef): CompiledPattern {
-  const flags = def.flags ?? "g";
+function compile(p: PatternDef): InternalPattern {
+  const flags = p.flags ?? "g";
   return {
-    id: def.id,
-    label: def.label,
-    category: def.category,
-    priority: def.priority ?? 0,
-    tooltip: def.tooltip,
-    re: new RegExp(def.regex, flags),
+    id: p.id,
+    label: p.label,
+    category: p.category,
+    priority: p.priority ?? 0,
+    tooltip: p.tooltip,
+    re: new RegExp(p.regex, flags),
+    excludeInSentence: p.excludeInSentence ?? [],
   };
 }
 
+/** Convenience: register the canonical citation + science sets and
+ *  return a ready-to-scan registry. Used by the content script, the
+ *  CLI batch scanner, and tests. */
 export function getDefaultRegistry(): PatternRegistry {
   const r = new PatternRegistry();
   r.register(citationsSet);
   r.register(scienceSet);
   return r;
-}
-
-export interface PureFinding {
-  patternId: string;
-  category: Category;
-  label: string;
-  text: string;
-  start: number;
-  end: number;
-  /** Full match length before any capture-group extraction. Used to
-   *  break ties in overlap resolution (longer = more specific). */
-  originalLength: number;
-  /** Pattern priority. Higher wins on full ties (same start, same
-   *  originalLength). Default 0. */
-  priority: number;
 }
 
 /**
@@ -91,13 +80,14 @@ export function applyPatternsToText(
       // Context disqualifier: if the pattern declares
       // `excludeInSentence` and the same sentence contains any of
       // those words, drop the finding. This is what makes
-      // "55.2 km" not a match in an earthquake article (the sentence
-      // contains "depth") but a real match in a particle-physics
-      // paper.
-      if (p.excludeInSentence && p.excludeInSentence.length > 0) {
-        if (sentenceContainsAny(text, start, end, p.excludeInSentence)) {
-          continue;
-        }
+      // "55.2 km" not a match in an earthquake article (the
+      // sentence contains "depth") but a real match in a
+      // particle-physics paper.
+      if (
+        p.excludeInSentence.length > 0 &&
+        sentenceContainsAny(text, start, end, p.excludeInSentence)
+      ) {
+        continue;
       }
 
       local.push({
@@ -120,8 +110,7 @@ export function applyPatternsToText(
  * `text` contains any of the disqualifying words (case-insensitive,
  * word-boundary). The sentence is detected with the same
  * decimal-aware + abbreviation-aware algorithm used for sentence
- * wrapping in the highlighter — same source of truth for "what is
- * a sentence here".
+ * wrapping in the highlighter.
  */
 function sentenceContainsAny(
   text: string,
@@ -130,19 +119,12 @@ function sentenceContainsAny(
   words: string[]
 ): boolean {
   if (words.length === 0) return false;
-  // Import lazily to avoid a circular import: highlight.ts already
-  // depends on the registry (via core).
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const sentences = findSentencesForContext(text);
-  const containing = sentences.find(
-    (s) => start >= s.start && end <= s.end
-  );
+  const containing = sentences.find((s) => start >= s.start && end <= s.end);
   if (!containing) return false;
   const haystack = containing.text.toLowerCase();
   for (const w of words) {
     const lw = w.toLowerCase();
-    // Word-boundary check: \b in JS is ASCII-only, so do it by
-    // index arithmetic to handle UTF-8 properly.
     let from = 0;
     while (from <= haystack.length - lw.length) {
       const i = haystack.indexOf(lw, from);
@@ -158,22 +140,96 @@ function sentenceContainsAny(
   return false;
 }
 
-// findSentencesForContext is defined at the bottom of this file
-// (after the function above references it). TypeScript hoists
-// function declarations, so the reference below resolves at runtime
-// even though the definition appears later in the file. We use
-// the regular function declaration (not `declare`) so that the
-// definition at the bottom isn't seen as a conflicting overload.
+/**
+ * Minimal sentence-detection for the context-disqualifier. Kept here
+ * (instead of imported from highlight.ts) to avoid a circular import:
+ * highlight.ts already depends on this file via core. Algorithm is
+ * identical to highlight.findSentences — decimal-aware + Dr./Mr./Fig./
+ * e.g.-aware. If the two implementations drift, the disqualifier
+ * might disagree with the visual wrap on edge cases, but the
+ * disqualifier is a guard, not a render boundary, so that's OK.
+ */
+function findSentencesForContext(
+  text: string
+): Array<{ start: number; end: number; text: string }> {
+  const out: Array<{ start: number; end: number; text: string }> = [];
+  let sentStart = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charAt(i);
+    if (c !== "." && c !== "!" && c !== "?") continue;
+    // decimal-context guard (1-2 digits before, 1-3 after).
+    if (c === ".") {
+      let beforeLen = 0;
+      for (let j = i - 1; j >= 0 && /\d/.test(text.charAt(j)); j--) beforeLen++;
+      let afterLen = 0;
+      for (let j = i + 1; j < text.length && /\d/.test(text.charAt(j)); j++) afterLen++;
+      if (beforeLen >= 1 && beforeLen <= 2 && afterLen >= 1 && afterLen <= 3) {
+        continue;
+      }
+    }
+    // abbreviation guard.
+    if (c === "." && isAbbreviation(text, i)) continue;
+    let j = i + 1;
+    while (j < text.length && /\s/.test(text.charAt(j))) j++;
+    if (j >= text.length) {
+      out.push({ start: sentStart, end: i + 1, text: text.slice(sentStart, i + 1) });
+      sentStart = i + 1;
+      continue;
+    }
+    const next = text.charAt(j);
+    if (/[A-Z(\["'¿]/.test(next)) {
+      out.push({ start: sentStart, end: i + 1, text: text.slice(sentStart, i + 1) });
+      sentStart = i + 1;
+    }
+  }
+  if (sentStart < text.length) {
+    out.push({ start: sentStart, end: text.length, text: text.slice(sentStart) });
+  }
+  return out;
+}
+
+const ABBREVIATIONS = new Set([
+  "Dr", "Mr", "Mrs", "Ms", "Prof", "Sr", "Jr", "St", "Gen",
+  "Fig", "Eq", "No", "Vol", "Sec", "Ch", "Art", "Ref", "pp", "p",
+  "Inc", "Co", "Corp", "Ltd",
+  "al", "vs", "etc", "cf", "ca", "e", "i",
+]);
+
+function isAbbreviation(text: string, dotPos: number): boolean {
+  let wordStart = dotPos - 1;
+  while (wordStart > 0 && /[A-Za-z]/.test(text.charAt(wordStart - 1))) {
+    wordStart--;
+  }
+  const word = text.substring(wordStart, dotPos);
+  if (ABBREVIATIONS.has(word)) return true;
+  if (word.length === 1 && /[A-Za-z]/.test(word)) {
+    const beforeWord = wordStart > 0 ? text.charAt(wordStart - 1) : " ";
+    if (!/[A-Za-z]/.test(beforeWord)) {
+      let i = dotPos + 1;
+      while (i < text.length && /\s/.test(text.charAt(i))) i++;
+      if (i < text.length) {
+        const next = text.charAt(i);
+        if (/[A-Z]/.test(next)) return true;
+        if (/[a-z]/.test(next) && (word === "e" || word === "i")) return true;
+      }
+    }
+  }
+  return false;
+}
 
 /**
- * Returns true if the sentence containing the [start, end) span in
- * `text` contains any of the disqualifying words (case-insensitive,
- * word-boundary). The sentence is detected with the same
- * decimal-aware + abbreviation-aware algorithm used for sentence
- * wrapping in the highlighter — same source of truth for "what is
- * a sentence here".
+ * DOM walker: visits every accepted text node under `root` and produces
+ * Findings that carry a reference to their source text node (used by the
+ * highlighter to wrap the right span in the page).
  */
-function sentenceContainsAny(
+export function applyPatterns(
+  root: Node,
+  registry: PatternRegistry
+): Finding[] {
+  const findings: Finding[] = [];
+  const doc = root.ownerDocument ??
+    (globalThis as { document?: Document }).document;
+  if (!doc) {
     throw new Error("applyPatterns: no document available");
   }
   const walker = doc.createTreeWalker(root, 0x4 /* SHOW_TEXT */, {
@@ -183,10 +239,6 @@ function sentenceContainsAny(
       const tag = parent.tagName;
       if (tag === "SCRIPT" || tag === "STYLE" || tag === "NOSCRIPT")
         return 2;
-      // Skip text nodes already wrapped in our highlights or sentence
-      // markers. Defense-in-depth against the re-scan feedback loop —
-      // the content script also gates via an `isRendering` flag, but
-      // if anything slips through we still don't double-wrap.
       if (
         parent.classList.contains("nx-highlight") ||
         parent.classList.contains("nx-sentence")
@@ -220,15 +272,19 @@ function sentenceContainsAny(
 }
 
 function resolveOverlaps<
-  T extends { start: number; end: number; originalLength?: number; priority?: number }
+  T extends {
+    start: number;
+    end: number;
+    originalLength?: number;
+    priority?: number;
+  }
 >(items: T[]): T[] {
   if (items.length <= 1) return items;
   items.sort((a, b) => {
     if (a.start !== b.start) return a.start - b.start;
     const aLen = a.originalLength ?? a.end - a.start;
     const bLen = b.originalLength ?? b.end - b.start;
-    if (aLen !== bLen) return bLen - aLen; // longer (more specific) wins
-    // On full tie, higher-priority pattern wins.
+    if (aLen !== bLen) return bLen - aLen;
     const aP = a.priority ?? 0;
     const bP = b.priority ?? 0;
     if (aP !== bP) return bP - aP;
@@ -241,55 +297,6 @@ function resolveOverlaps<
       out.push(f);
       cursor = f.end;
     }
-  }
-  return out;
-}
-
-// Provide findSentencesForContext for the context-disqualifier
-// without creating a circular import. The highlight module already
-// imports from this file (via core), so we re-implement just the
-// bits we need here — a single function call, no shared state.
-//
-// (If the highlight module's algorithm drifts from this, the
-// disqualifier might use ligeramente different sentence boundaries
-// than the highlighter. That's acceptable: the disqualifier is
-// a guard, not a render boundary.)
-function findSentencesForContext(text: string): Array<{
-  start: number;
-  end: number;
-  text: string;
-}> {
-  const out: Array<{ start: number; end: number; text: string }> = [];
-  let sentStart = 0;
-  for (let i = 0; i < text.length; i++) {
-    const c = text.charAt(i);
-    if (c !== "." && c !== "!" && c !== "?") continue;
-    // decimal-context guard (1-2 digits before, 1-3 after) — same
-    // rule as the highlighter.
-    if (c === ".") {
-      let beforeLen = 0;
-      for (let j = i - 1; j >= 0 && /\d/.test(text.charAt(j)); j--) beforeLen++;
-      let afterLen = 0;
-      for (let j = i + 1; j < text.length && /\d/.test(text.charAt(j)); j++) afterLen++;
-      if (beforeLen >= 1 && beforeLen <= 2 && afterLen >= 1 && afterLen <= 3) {
-        continue;
-      }
-    }
-    let j = i + 1;
-    while (j < text.length && /\s/.test(text.charAt(j))) j++;
-    if (j >= text.length) {
-      out.push({ start: sentStart, end: i + 1, text: text.slice(sentStart, i + 1) });
-      sentStart = i + 1;
-      continue;
-    }
-    const next = text.charAt(j);
-    if (/[A-Z(\["'¿]/.test(next)) {
-      out.push({ start: sentStart, end: i + 1, text: text.slice(sentStart, i + 1) });
-      sentStart = i + 1;
-    }
-  }
-  if (sentStart < text.length) {
-    out.push({ start: sentStart, end: text.length, text: text.slice(sentStart) });
   }
   return out;
 }
