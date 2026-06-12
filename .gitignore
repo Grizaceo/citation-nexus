@@ -15,3 +15,5 @@ build/
 .coverage
 .env
 .env.local
+# Bridge test fixtures (written by pytest into a tmp vault root)
+bridge/tests/.tmp_vault/
