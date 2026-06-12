@@ -1,8 +1,13 @@
 # Citation Nexus
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Goldset F1](https://img.shields.io/badge/goldset_F1-0.989-brightgreen)](goldset/reports/latest.md)
+[![Tests](https://img.shields.io/badge/tests-88_passing-brightgreen)](#tests)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](src)
+
 Chrome extension (Manifest V3) that detects **academic citations** and
 **English-language science concepts** on any web page, highlights them
-for diagonal reading, and exposes an **agentic JSON API** over a local
+for **diagonal reading**, and exposes an **agentic JSON API** over a local
 HTTP bridge and a Chrome native messaging host.
 
 Built end-to-end as a showcase for the **MiniMax M3** model — a single
@@ -18,10 +23,13 @@ On any page, the content script:
 
 1. Walks the DOM, skipping `<script>`/`<style>`/our own wrappers.
 2. Applies every registered pattern from `citations` and `science` sets.
-3. Resolves overlapping matches (longest wins).
-4. Wraps each match in a `<span class="nx-highlight nx-highlight-{cat}">`
+3. Resolves overlapping matches (longest-wins, then higher-priority).
+4. Wraps each match in `<span class="nx-highlight nx-highlight-{cat}">`
    with a tooltip.
-5. Pushes the findings to the background worker so the popup can show
+5. **Sentence-aware** — any sentence that contains at least one match
+   is also wrapped in `<mark class="nx-sentence">` with a subtle
+   background, so diagonal readers can scan whole relevant blocks.
+6. Pushes the findings to the background worker so the popup can show
    counts per category without re-scanning.
 
 Hover any highlighted span → tooltip with the pattern label. Open the
@@ -73,7 +81,7 @@ sample.
 
 ```bash
 cd bridge
-python -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 nexus-bridge --port 3002
 # or:  uvicorn nexus_bridge.server:app --port 3002
@@ -82,95 +90,10 @@ nexus-bridge --port 3002
 ### Tests
 
 ```bash
-npm test              # vitest: pattern set unit tests
-cd bridge && pytest   # bridge API + pattern-catalog sync test
+npm test              # vitest: 71 unit + integration tests
+cd bridge && pytest   # bridge API + protocol tests (10)
+cd ../agent && python3 -m pytest tests/   # native host tests (7)
 ```
 
-## Project layout
-
-```
-citation-nexus/
-├── package.json
-├── wxt.config.ts
-├── src/
-│   ├── entrypoints/
-│   │   ├── background.ts        # service worker
-│   │   ├── content.ts           # page scanner + highlighter
-│   │   ├── popup/               # toolbar popup
-│   │   └── options/             # settings page
-│   ├── patterns/
-│   │   ├── core.ts              # PatternDef, PatternSet, Finding
-│   │   ├── registry.ts          # applyPatterns() with overlap resolution
-│   │   ├── highlight.ts         # <span> wrapper + tooltip
-│   │   ├── sets/
-│   │   │   ├── citations.ts     # arXiv, DOI, PMID, GitHub, ...
-│   │   │   └── science.ts       # math, physics, biology, cs, chemistry
-│   │   └── tests/               # vitest
-│   ├── bridge/
-│   │   ├── client.ts            # extension → HTTP bridge
-│   │   └── protocol.md
-│   ├── cli/
-│   │   └── scan.ts              # batch scanner (used by goldset)
-│   └── assets/
-│       └── content.css          # highlight theme
-├── bridge/
-│   ├── pyproject.toml
-│   ├── nexus_bridge/server.py
-│   └── tests/test_bridge.py
-├── agent/
-│   ├── native_host.py
-│   ├── manifest.json
-│   └── README.md
-├── goldset/
-│   ├── README.md
-│   ├── data/
-│   │   ├── citations.jsonl      # 9 patterns × ~17 examples
-│   │   └── science.jsonl        # 15 patterns × ~17 examples
-│   ├── scripts/eval_goldset.py  # P/R/F1 eval + CI gate
-│   └── reports/latest.md        # last eval output
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── PATTERNS.md
-│   └── AGENT.md
-├── demo/demo.html
-└── .github/workflows/ci.yml
-```
-
-## Goldset evaluation
-
-The `goldset/` directory holds ~430 hand-curated examples (positive and
-negative) across 24 patterns. The eval script (`goldset/scripts/eval_goldset.py`)
-spawns the TS registry once per file, scores TP/FP/FN/TN, computes P/R/F1
-per pattern, and gates the build on macro F1 ≥ 0.85. Latest run:
-
-| Metric | Score |
-|---|---:|
-| Macro precision | 0.996 |
-| Macro recall | 0.985 |
-| **Macro F1** | **0.989** |
-| Micro F1 | 0.989 |
-| Patterns at F1=1.00 | 21 / 24 |
-
-See `goldset/reports/latest.md` for the full per-pattern table and failure
-samples. To run locally:
-
-```bash
-npm ci
-python3 goldset/scripts/eval_goldset.py
-```
-```
-
-## Why this exists
-
-A clean slate that demonstrates three things together:
-
-- **Diagonal reading**: high-precision highlights per scientific category
-  with tooltips, not just blue underlines.
-- **Citation import**: pop a page, see every arXiv/DOI/PMID in the popup,
-  one-click import to a local vault.
-- **Agent-native**: any CLI agent can scan, list, and import without
-  the browser. The native host makes the extension itself scriptable.
-
-## License
-
+CI runs 4 jobs in parallel: `typescript`, `bridge`, `goldset`, `native-host`.
 MIT
