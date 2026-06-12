@@ -176,7 +176,7 @@
 {"pattern": "bio.taxonomy", "text": "An electron is a particle.", "expect_null": true}
 {"pattern": "bio.taxonomy", "text": "The Mouse ran across the floor.", "expect_null": true}
 {"pattern": "bio.taxonomy", "text": "Apollo Eleven landed on the moon.", "expect_null": true}
-{"pattern": "bio.taxonomy", "text": "Ecoli is informal; correct is Escherichia coli.", "expect_null": true}
+{"pattern": "bio.taxonomy", "text": "Ecoli is informal; correct is Escherichia coli.", "expect": "Escherichia coli"}
 
 {"pattern": "cs.venue", "text": "Published at NeurIPS 2024.", "expect": "NeurIPS 2024"}
 {"pattern": "cs.venue", "text": "Appeared in ICML 2023.", "expect": "ICML 2023"}
