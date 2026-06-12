@@ -6,6 +6,8 @@ import type {
   Category,
   CompiledPattern,
   Finding,
+  Falsifier,
+  MatchContext,
   PatternDef,
   PatternSet,
   PureFinding,
@@ -16,6 +18,9 @@ import { scienceSet } from "./sets/science";
 /** PatternDef with the regex compiled. */
 interface InternalPattern extends CompiledPattern {
   excludeInSentence: string[];
+  /** Resolved falsifier list (falsifiers + a synthetic one for the
+   *  deprecated `excludeInSentence`, for back-compat). */
+  falsifiers: Falsifier[];
 }
 
 export class PatternRegistry {
@@ -33,6 +38,15 @@ export class PatternRegistry {
 
 function compile(p: PatternDef): InternalPattern {
   const flags = p.flags ?? "g";
+  // Merge explicit falsifiers with a synthetic one when the legacy
+  // `excludeInSentence` is set, so old pattern definitions keep
+  // working unchanged.
+  const falsifiers: Falsifier[] = [
+    ...(p.falsifiers ?? []),
+    ...(p.excludeInSentence && p.excludeInSentence.length > 0
+      ? [{ context: p.excludeInSentence } satisfies Falsifier]
+      : []),
+  ];
   return {
     id: p.id,
     label: p.label,
@@ -41,6 +55,7 @@ function compile(p: PatternDef): InternalPattern {
     tooltip: p.tooltip,
     re: new RegExp(p.regex, flags),
     excludeInSentence: p.excludeInSentence ?? [],
+    falsifiers,
   };
 }
 
@@ -77,16 +92,16 @@ export function applyPatternsToText(
       const start = m.index + offset;
       const end = start + captured.length;
 
-      // Context disqualifier: if the pattern declares
-      // `excludeInSentence` and the same sentence contains any of
-      // those words, drop the finding. This is what makes
-      // "55.2 km" not a match in an earthquake article (the
-      // sentence contains "depth") but a real match in a
-      // particle-physics paper.
-      if (
-        p.excludeInSentence.length > 0 &&
-        sentenceContainsAny(text, start, end, p.excludeInSentence)
-      ) {
+      // Quick-reject via falsifiers (pure, text-only — no DOM
+      // context available in the pure path). The full DOM-context
+      // check (parent, confidence, etc.) happens in `applyPatterns`.
+      const ctx: MatchContext = {
+        text,
+        start,
+        end,
+        confidence: 0.7,
+      };
+      if (p.falsifiers.length > 0 && anyFalsifierMatches(p.falsifiers, ctx)) {
         continue;
       }
 
@@ -99,6 +114,7 @@ export function applyPatternsToText(
         end,
         originalLength: m[0].length,
         priority: p.priority ?? 0,
+        confidence: ctx.confidence,
       });
     }
   }
@@ -124,18 +140,86 @@ function sentenceContainsAny(
   if (!containing) return false;
   const haystack = containing.text.toLowerCase();
   for (const w of words) {
-    const lw = w.toLowerCase();
-    let from = 0;
-    while (from <= haystack.length - lw.length) {
-      const i = haystack.indexOf(lw, from);
-      if (i < 0) break;
-      const before = i === 0 || !/[a-z0-9]/.test(haystack.charAt(i - 1));
-      const afterOk =
-        i + lw.length === haystack.length ||
-        !/[a-z0-9]/.test(haystack.charAt(i + lw.length));
-      if (before && afterOk) return true;
-      from = i + 1;
+    if (wordInText(w.toLowerCase(), haystack)) return true;
+  }
+  return false;
+}
+
+/** True if any falsifier in the list matches the given context. */
+export function anyFalsifierMatches(
+  falsifiers: Falsifier[],
+  ctx: MatchContext
+): boolean {
+  for (const f of falsifiers) {
+    if (runFalsifier(f, ctx)) return true;
+  }
+  return false;
+}
+
+/** Evaluate a single falsifier against a match context. Exported
+ *  so the test suite can call it directly without going through
+ *  the full apply path. */
+export function runFalsifier(
+  f: Falsifier,
+  ctx: MatchContext
+): boolean {
+  if ("context" in f) {
+    return sentenceContainsAny(ctx.text, ctx.start, ctx.end, f.context);
+  }
+  if ("before" in f) {
+    // Look at the up-to-100 chars immediately before the match.
+    const before = ctx.text.slice(Math.max(0, ctx.start - 100), ctx.start);
+    return matchPattern(f.before, before);
+  }
+  if ("after" in f) {
+    const after = ctx.text.slice(ctx.end, Math.min(ctx.text.length, ctx.end + 100));
+    return matchPattern(f.after, after);
+  }
+  if ("parent" in f) {
+    if (!ctx.parent || ctx.parent.nodeType !== 1 /* ELEMENT_NODE */) return false;
+    const el = ctx.parent as Element;
+    if (f.parent.tag && el.tagName.toUpperCase() !== f.parent.tag.toUpperCase()) {
+      return false;
     }
+    if (f.parent.class && !el.classList.contains(f.parent.class)) {
+      return false;
+    }
+    // Both `tag` and `class` (if specified) matched.
+    return true;
+  }
+  if ("confidenceBelow" in f) {
+    return ctx.confidence < f.confidenceBelow;
+  }
+  // Exhaustiveness check: TypeScript will flag this if a new
+  // Falsifier variant is added without updating this function.
+  const _exhaustive: never = f;
+  return _exhaustive;
+}
+
+function matchPattern(p: string | RegExp, text: string): boolean {
+  // Strip trailing whitespace from the slice. The natural user
+  // intent for `before: "version"` is "the last WORD before the
+  // match is version", not "the slice ends exactly with the
+  // characters 'version' at the character boundary". Whitespace
+  // at the boundary is implicit.
+  const trimmed = text.replace(/\s+$/, "");
+  if (typeof p === "string") {
+    return trimmed.toLowerCase().endsWith(p.toLowerCase());
+  }
+  return new RegExp(p.source, p.flags.replace("g", "")).test(trimmed);
+}
+
+function wordInText(word: string, haystack: string): boolean {
+  let from = 0;
+  while (from <= haystack.length - word.length) {
+    const i = haystack.indexOf(word, from);
+    if (i < 0) break;
+    const before = i === 0 || !/[a-z0-9]/.test(haystack.charAt(i - 1));
+    const afterOk =
+      i + word.length === haystack.length ||
+      !/[a-z0-9]/.test(haystack.charAt(i + word.length));
+    if (before && afterOk) return true;
+    from = i + 1;
   }
   return false;
 }
@@ -267,19 +351,32 @@ export function applyPatterns(
       if (!acceptTextNode(text, parent)) return;
       const value = text.nodeValue ?? "";
       if (!value) return;
-      const local: Finding[] = applyPatternsToText(value, registry).map(
-        (f) =>
-          ({
-            patternId: f.patternId,
-            category: f.category,
-            label: f.label,
-            text: f.text,
-            start: f.start,
-            end: f.end,
-            node: text,
-          }) as Finding
-      );
-      findings.push(...local);
+      const candidates = applyPatternsToText(value, registry);
+      for (const f of candidates) {
+        // DOM-aware falsifier check (parent tag/class). The pure
+        // text-only checks already ran inside applyPatternsToText;
+        // here we add the DOM-context half.
+        const ctx: MatchContext = {
+          text: value,
+          start: f.start,
+          end: f.end,
+          parent,
+          confidence: f.confidence ?? 0.7,
+        };
+        // The pattern that produced `f`:
+        const p = registry.all().find((pp) => pp.id === f.patternId);
+        if (p && anyFalsifierMatches(p.falsifiers, ctx)) continue;
+        findings.push({
+          patternId: f.patternId,
+          category: f.category,
+          label: f.label,
+          text: f.text,
+          start: f.start,
+          end: f.end,
+          node: text,
+          confidence: ctx.confidence,
+        });
+      }
       return;
     }
     // Otherwise recurse into children.

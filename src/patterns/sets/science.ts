@@ -77,29 +77,35 @@ export const scienceSet: PatternSet = {
       // generic "read before/after to decide" check the user asked
       // for: a "55.2 km" in an article that also mentions "depth"
       // or "magnitude" is a depth, not a particle-physics quantity.
-      excludeInSentence: [
-        "depth",
-        "magnitude",
-        "epicenter",
-        "epicentre",
-        "altitude",
-        "elevation",
-        "tsunami",
-        "aftershock",
-        "earthquake",
-        "fault",
-        "tectonic",
-        "seismolog",
-        "geolog",
-        "oceanic",
-        "kilomet",
-        "kilometer",
-        "miles",
-        "feet",
-        "off the coast",
-        "from the",
-        "located",
-        "coast",
+      // Migrated from the legacy `excludeInSentence` field to the
+      // new `falsifiers` array; behavior is identical.
+      falsifiers: [
+        {
+          context: [
+            "depth",
+            "magnitude",
+            "epicenter",
+            "epicentre",
+            "altitude",
+            "elevation",
+            "tsunami",
+            "aftershock",
+            "earthquake",
+            "fault",
+            "tectonic",
+            "seismolog",
+            "geolog",
+            "oceanic",
+            "kilomet",
+            "kilometer",
+            "miles",
+            "feet",
+            "off the coast",
+            "from the",
+            "located",
+            "coast",
+          ],
+        },
       ],
     },
 
