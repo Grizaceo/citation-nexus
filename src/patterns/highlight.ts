@@ -47,14 +47,51 @@ function isDecimalContext(text: string, dotPos: number): boolean {
   return beforeLen >= 1 && beforeLen <= 2 && afterLen >= 1 && afterLen <= 3;
 }
 
+// Common English abbreviations whose trailing '.' is NOT a sentence
+// terminator. Includes titles (Dr., Mr.), scientific (Fig., Eq., Vol.),
+// Latin (e.g., i.e., et al., etc., vs., cf.), and corporate (Inc., Co.).
+// Single-letter abbreviations like "e." in "e.g." are also handled by
+// the single-letter rule in isAbbreviation() below.
+const ABBREVIATIONS = new Set([
+  "Dr", "Mr", "Mrs", "Ms", "Prof", "Sr", "Jr", "St", "Gen",
+  "Fig", "Eq", "No", "Vol", "Sec", "Ch", "Art", "Ref", "pp", "p",
+  "Inc", "Co", "Corp", "Ltd",
+  "al", "vs", "etc", "cf", "ca", "e", "i",
+]);
+
+/** Returns true if `text[dotPos]` (a `.`) is part of an abbreviation
+ *  like "Dr.", "Fig.", "et al.", or "e.g." — i.e. NOT a sentence
+ *  terminator. The single-letter case catches "X." followed by
+ *  another letter (the second letter of a "X.Y." pair). */
+function isAbbreviation(text: string, dotPos: number): boolean {
+  // Find the start of the word ending at this dot.
+  let wordStart = dotPos - 1;
+  while (wordStart > 0 && /[A-Za-z]/.test(text.charAt(wordStart - 1))) {
+    wordStart--;
+  }
+  const word = text.substring(wordStart, dotPos);
+  if (ABBREVIATIONS.has(word)) return true;
+  // Single-letter word: "J." in "J. K. Rowling" or "e" in "e.g.".
+  if (word.length === 1) {
+    const beforeWord = wordStart > 0 ? text.charAt(wordStart - 1) : " ";
+    if (!/[A-Za-z]/.test(beforeWord)) {
+      let j = dotPos + 1;
+      while (j < text.length && /\s/.test(text.charAt(j))) j++;
+      if (j < text.length && /[A-Za-z]/.test(text.charAt(j))) return true;
+    }
+  }
+  return false;
+}
+
 /** Returns true if `pos` is a sentence boundary. A `.`, `!`, or `?` is
- *  a boundary only when it is NOT a decimal (e.g. 1.2) and the next
- *  non-whitespace char is uppercase, an opening quote/bracket, or end
- *  of string. */
+ *  a boundary only when it is NOT a decimal (e.g. 1.2), NOT an
+ *  abbreviation (Dr., Fig., e.g., et al.), and the next non-whitespace
+ *  char is uppercase, an opening quote/bracket, or end of string. */
 function isBoundary(text: string, pos: number): boolean {
   const c = text.charAt(pos);
   if (c !== "." && c !== "!" && c !== "?") return false;
   if (c === "." && isDecimalContext(text, pos)) return false;
+  if (c === "." && isAbbreviation(text, pos)) return false;
   let j = pos + 1;
   while (j < text.length && /\s/.test(text.charAt(j))) j++;
   if (j >= text.length) return true;

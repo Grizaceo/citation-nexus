@@ -49,6 +49,33 @@ describe("sentence detection — punctuation + decimal guard", () => {
     expect(s[2]!.text).toBe(" Our approach achieves state-of-the-art results on MNIST and CIFAR-10.");
   });
 
+  it("abbreviations: Dr., Mr., Fig., Eq., e.g., et al. are NOT boundaries", () => {
+    // The classic case: "Vaswani et al. (2017) used self-attention"
+    // must be one sentence. My old regex split at "al." because the
+    // next char is '(' (in the [A-Z(\[..." opener list). Abbreviation
+    // list fixes that.
+    const text = "Vaswani et al. (2017) used self-attention. Dr. Smith and Mr. Jones built on it.";
+    const s = findSentences(text);
+    expect(s).toHaveLength(2);
+    expect(s[0]!.text).toBe("Vaswani et al. (2017) used self-attention.");
+    expect(s[1]!.text).toBe(" Dr. Smith and Mr. Jones built on it.");
+  });
+
+  it("e.g. / i.e. are single-letter abbreviations", () => {
+    const text = "We trained a model. See e.g. Vaswani et al. (2017) for details.";
+    const s = findSentences(text);
+    expect(s).toHaveLength(2);
+    expect(s[1]!.text).toBe(" See e.g. Vaswani et al. (2017) for details.");
+  });
+
+  it("Fig. and Eq. don't break adjacent text", () => {
+    const text = "Results are in Fig. 1. Eq. (3) gives the bound.";
+    const s = findSentences(text);
+    expect(s).toHaveLength(2);
+    expect(s[0]!.text).toBe("Results are in Fig. 1.");
+    expect(s[1]!.text).toBe(" Eq. (3) gives the bound.");
+  });
+
   it("version number '1.2.3.4' stays as one segment (chained decimals)", () => {
     const s = findSentences("We use version 1.2.3.4 in production.");
     // Each '.' between short digit runs is decimal-context, so none of
