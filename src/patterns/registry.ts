@@ -14,6 +14,7 @@ import type {
 } from "./core";
 import { citationsSet } from "./sets/citations";
 import { scienceSet } from "./sets/science";
+import { scanAllSources } from "./sources";
 
 /** PatternDef with the regex compiled. */
 interface InternalPattern extends CompiledPattern {
@@ -114,6 +115,7 @@ export function applyPatternsToText(
         end,
         originalLength: m[0].length,
         priority: p.priority ?? 0,
+        source: "text",
         confidence: ctx.confidence,
       });
     }
@@ -319,19 +321,41 @@ export function applyPatterns(
   registry: PatternRegistry
 ): Finding[] {
   const findings: Finding[] = [];
-  const doc =
-    root.ownerDocument ??
-    (root as Document).defaultView?.document ??
-    (globalThis as { document?: Document }).document;
-  if (!doc) {
-    throw new Error("applyPatterns: no document available");
-  }
 
   walkTextNodes(root);
 
+  // High-confidence sources: meta tags, JSON-LD, canonical link.
+  // These are emitted with `node: <the meta element>` but the
+  // highlighter filters out non-text sources. They appear in the
+  // popup so the user can see "the publisher told us this is a DOI"
+  // even when there's no in-body text to highlight.
+  //
+  // We always scan from `document` (or the root's ownerDocument)
+  // so we catch `<meta>` tags in `<head>`, not just in `<body>`.
+  const sourceRoot =
+    root.ownerDocument ??
+    (root as Document).defaultView?.document ??
+    (globalThis as { document?: Document }).document ??
+    root;
+  const sourceFindings = scanAllSources(sourceRoot);
+  for (const sf of sourceFindings) {
+    findings.push({
+      patternId: sf.patternId,
+      category: sf.category,
+      label: sf.label,
+      text: sf.text,
+      start: sf.start,
+      end: sf.end,
+      // Sentinel node; the highlighter filters by source.
+      node: document.createTextNode(""),
+      source: sf.source,
+      confidence: sf.confidence,
+    });
+  }
+
+  return findings;
+
   function walkTextNodes(node: Node): void {
-    // If this is an element with a shadow root, walk into the shadow
-    // first. Shadows can contain their own custom elements that
     // ALSO have shadows, so this is recursive.
     if (node.nodeType === 1 /* ELEMENT_NODE */) {
       const el = node as Element;
@@ -374,6 +398,7 @@ export function applyPatterns(
           start: f.start,
           end: f.end,
           node: text,
+          source: "text",
           confidence: ctx.confidence,
         });
       }

@@ -102,6 +102,8 @@ export interface PatternSet {
   patterns: PatternDef[];
 }
 
+export type FindingSource = "text" | "meta" | "json-ld" | "canonical";
+
 export interface Finding {
   patternId: string;
   category: Category;
@@ -110,6 +112,11 @@ export interface Finding {
   start: number; // offset within the text node
   end: number; // exclusive
   node: Text; // source DOM text node
+  /** Where this finding came from. Text-body matches are highlightable
+   *  in the page; meta-tag / JSON-LD / canonical-link matches appear
+   *  in the popup but have no text to wrap. The highlighter uses
+   *  this to decide whether to render. */
+  source: FindingSource;
   /** Confidence 0-1. Currently only meaningful for matches that
    *  come from meta tags or JSON-LD; text-body matches default
    *  to a fixed value. Used by `{ confidenceBelow: n }` falsifiers. */
@@ -131,6 +138,9 @@ export interface PureFinding {
   /** Pattern priority. Higher wins on full ties (same start, same
    *  originalLength). Default 0. */
   priority: number;
+  /** Where this finding came from. Pure findings default to
+   *  "text" since the pure path doesn't scan meta/JSON-LD. */
+  source: FindingSource;
   /** Confidence 0-1. See Finding.confidence. */
   confidence?: number;
 }

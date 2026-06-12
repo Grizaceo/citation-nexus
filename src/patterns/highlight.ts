@@ -240,9 +240,15 @@ function renderToFragment(
 
 export function renderHighlights(findings: Finding[]): void {
   if (findings.length === 0) return;
+  // Only text-body findings are highlightable. Meta-tag and
+  // JSON-LD findings are metadata (no DOM text to wrap); they
+  // still appear in the popup but the visual highlighter skips
+  // them.
+  const highlightable = findings.filter((f) => f.source === "text");
+  if (highlightable.length === 0) return;
   // Group by source text node so each node is replaced at most once.
   const byNode = new Map<Text, Finding[]>();
-  for (const f of findings) {
+  for (const f of highlightable) {
     const arr = byNode.get(f.node) ?? [];
     arr.push(f);
     byNode.set(f.node, arr);

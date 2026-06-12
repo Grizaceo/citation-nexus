@@ -11,6 +11,7 @@ const sampleFinding = (start: number, end: number, text = "x"): Finding => ({
   start,
   end,
   node: {} as Text,
+  source: "text",
 });
 
 function makeDeps(overrides: Partial<BridgeDeps> = {}): BridgeDeps {

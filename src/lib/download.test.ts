@@ -11,6 +11,7 @@ function mkFinding(patternId: string, text: string): Finding {
     start: 0,
     end: text.length,
     node: {} as Text,
+    source: "text",
   };
 }
 
