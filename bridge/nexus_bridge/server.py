@@ -5,15 +5,20 @@ Endpoints:
     GET  /patterns
     POST /scan
     POST /import
+    POST /download          (new: fetch + write a paper to vault/papers/)
+    GET  /papers            (new: list downloaded files)
+    POST /batch-download    (new: download many in one call)
 """
 
 from __future__ import annotations
 
 import argparse
 import logging
+import mimetypes
 from pathlib import Path
 from typing import Any
 
+import httpx
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
@@ -21,6 +26,9 @@ logger = logging.getLogger("nexus_bridge")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 DEFAULT_VAULT_ROOT = Path("~/.local/share/nexus/vault").expanduser()
+# Papers go under vault/papers/<category>/<id>.<format>. Mirrors
+# agent/native_host.py's PAPERS_ROOT.
+PAPERS_ROOT = DEFAULT_VAULT_ROOT / "papers"
 
 # Built-in catalog of pattern sets, mirrored from src/patterns/sets/*.ts.
 # Kept in sync manually; tests verify the TS side matches.
@@ -107,6 +115,37 @@ class ScanResponse(BaseModel):
     findings: list[Finding]
 
 
+class DownloadRequest(BaseModel):
+    """Single-file download request. Mirrors DownloadInfo from the
+    TS downloader module so the agent and the extension share
+    the same payload shape."""
+    url: str
+    category: str
+    filename: str
+    format: str  # "pdf" | "html"
+
+
+class DownloadResponse(BaseModel):
+    ok: bool
+    path: str | None = None
+    size: int | None = None
+    content_type: str | None = None
+    skipped: str | None = None
+    error: str | None = None
+
+
+class BatchDownloadRequest(BaseModel):
+    """Batch download — a list of DownloadRequest bodies, processed
+    in order. The response mirrors the per-file status so the
+    caller knows which ones succeeded and which were skipped."""
+    items: list[DownloadRequest]
+
+
+class BatchDownloadResponse(BaseModel):
+    ok: bool
+    results: list[DownloadResponse]
+
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {"ok": True, "version": VERSION}
@@ -158,6 +197,102 @@ def _render(req: ImportRequest) -> str:
         f"- source_title: {src.title or ''}\n"
         f"- imported_by: citation-nexus-bridge/{VERSION}\n"
     )
+
+
+def _do_download(req: DownloadRequest) -> DownloadResponse:
+    """Fetch `url` and write the body to PAPERS_ROOT/<category>/<filename>.<format>.
+
+    Mirrors the logic in agent/native_host.py — same gating
+    (skip if file exists and is >1 KB), same path safety
+    (refuse path separators), same shape of response.
+    """
+    if not (req.url and req.category and req.filename and req.format):
+        return DownloadResponse(ok=False, error="missing required field")
+    if req.format not in ("pdf", "html"):
+        return DownloadResponse(ok=False, error=f"unsupported format: {req.format}")
+    if any(c in req.filename for c in ("/", "\\", "\x00")) or req.filename.startswith("."):
+        return DownloadResponse(ok=False, error=f"unsafe filename: {req.filename!r}")
+
+    target_dir = PAPERS_ROOT / req.category
+    target = target_dir / f"{req.filename}.{req.format}"
+
+    if target.exists() and target.stat().st_size > 1024:
+        return DownloadResponse(
+            ok=True,
+            path=str(target),
+            size=target.stat().st_size,
+            content_type=mimetypes.guess_type(str(target))[0] or "",
+            skipped="already exists",
+        )
+
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        with httpx.stream("GET", req.url, timeout=30.0, follow_redirects=True) as r:
+            if r.status_code >= 400:
+                return DownloadResponse(
+                    ok=False, error=f"HTTP {r.status_code} from {req.url}"
+                )
+            content_type = r.headers.get("content-type", "")
+            with target.open("wb") as f:
+                for chunk in r.iter_bytes():
+                    f.write(chunk)
+            size = target.stat().st_size
+    except httpx.HTTPError as e:
+        return DownloadResponse(ok=False, error=f"fetch: {e}")
+    except OSError as e:
+        return DownloadResponse(ok=False, error=f"write: {e}")
+
+    return DownloadResponse(
+        ok=True,
+        path=str(target),
+        size=size,
+        content_type=content_type,
+    )
+
+
+@app.post("/download", response_model=DownloadResponse)
+def download(req: DownloadRequest) -> DownloadResponse:
+    """Single-file download. The agent can use this to fetch a
+    paper the extension surfaced."""
+    return _do_download(req)
+
+
+@app.post("/batch-download", response_model=BatchDownloadResponse)
+def batch_download(req: BatchDownloadRequest) -> BatchDownloadResponse:
+    """Many downloads in one call. Items are processed sequentially;
+    a failure on one does not abort the others. The response lists
+    per-item status so the caller can present a summary."""
+    results = [_do_download(item) for item in req.items]
+    return BatchDownloadResponse(ok=all(r.ok for r in results), results=results)
+
+
+@app.get("/papers")
+def list_papers(category: str | None = None) -> dict[str, Any]:
+    """List downloaded papers. Optional `?category=...` filter.
+    Returns paths + sizes so the agent can summarize what's
+    on disk before asking the user what to do with it."""
+    base = PAPERS_ROOT if category is None else PAPERS_ROOT / category
+    if not base.exists():
+        return {"count": 0, "items": [], "category": category}
+    items: list[dict[str, Any]] = []
+    for path in sorted(base.rglob("*")):
+        if not path.is_file():
+            continue
+        if path.stat().st_size == 0:
+            continue
+        # path is e.g. <PAPERS_ROOT>/<category>/<filename>.<format>
+        rel = path.relative_to(PAPERS_ROOT)
+        parts = rel.parts
+        cat = parts[0] if len(parts) > 1 else ""
+        items.append(
+            {
+                "category": cat,
+                "filename": path.name,
+                "path": str(path),
+                "size": path.stat().st_size,
+            }
+        )
+    return {"count": len(items), "items": items, "category": category}
 
 
 def run() -> None:  # pragma: no cover (entry point)
