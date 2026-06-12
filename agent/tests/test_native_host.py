@@ -57,6 +57,158 @@ def test_dispatch_unknown_action_returns_error():
     assert "unknown action" in result["error"].lower()
 
 
+def test_dispatch_download_validates_required_fields():
+    mod = load_host()
+    # Missing url/category/filename/format -> error.
+    assert mod.dispatch({"action": "download", "request": {}})["ok"] is False
+    assert mod.dispatch(
+        {"action": "download", "request": {"url": "x", "category": "x", "filename": "x"}}
+    )["ok"] is False
+    # Bad format.
+    assert mod.dispatch(
+        {
+            "action": "download",
+            "request": {
+                "url": "https://example.com/x",
+                "category": "citation",
+                "filename": "x",
+                "format": "exe",
+            },
+        }
+    )["ok"] is False
+    # Unsafe filename (path separator).
+    assert mod.dispatch(
+        {
+            "action": "download",
+            "request": {
+                "url": "https://example.com/x",
+                "category": "citation",
+                "filename": "../etc/passwd",
+                "format": "pdf",
+            },
+        }
+    )["ok"] is False
+
+
+def test_dispatch_download_writes_to_vault(tmp_path, monkeypatch):
+    mod = load_host()
+    # Redirect the vault root to a temp dir so the test doesn't
+    # touch the real ~/.local/share/nexus/vault.
+    monkeypatch.setattr(mod, "PAPERS_ROOT", tmp_path / "papers")
+
+    # Mock the HTTP call. We don't want a real network round-trip
+    # in unit tests; the httpx.stream contract is exercised in
+    # the bridge's own tests.
+    class FakeStream:
+        def __init__(self, body, content_type="application/pdf"):
+            self.body = body
+            self.content_type = content_type
+            self.status_code = 200
+            self.headers = {"content-type": content_type}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def iter_bytes(self):
+            yield self.body
+
+    monkeypatch.setattr(
+        mod.httpx,
+        "stream",
+        lambda *a, **kw: FakeStream(b"%PDF-1.4 fake pdf bytes"),
+    )
+
+    result = mod.dispatch(
+        {
+            "action": "download",
+            "request": {
+                "url": "https://arxiv.org/pdf/2401.01234",
+                "category": "citation",
+                "filename": "2401.01234",
+                "format": "pdf",
+            },
+        }
+    )
+    assert result["ok"] is True, result
+    saved = tmp_path / "papers" / "citation" / "2401.01234.pdf"
+    assert saved.exists()
+    assert saved.read_bytes() == b"%PDF-1.4 fake pdf bytes"
+    assert result["size"] == len(b"%PDF-1.4 fake pdf bytes")
+    assert result["path"] == str(saved)
+
+
+def test_dispatch_download_skips_already_downloaded(tmp_path, monkeypatch):
+    """If the file already exists and is non-trivial (>1KB), the
+    download is skipped (idempotent). Smaller files are overwritten
+    because they may be a failed previous attempt."""
+    mod = load_host()
+    monkeypatch.setattr(mod, "PAPERS_ROOT", tmp_path / "papers")
+
+    target_dir = tmp_path / "papers" / "citation"
+    target_dir.mkdir(parents=True)
+    existing = target_dir / "2401.01234.pdf"
+    existing.write_bytes(b"x" * 2048)  # 2 KB, well above 1KB threshold
+
+    # Even with a fake stream that would write 5 bytes, the
+    # existing file should win.
+    class FakeStream:
+        status_code = 200
+        headers = {"content-type": "application/pdf"}
+
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def iter_bytes(self): yield b"WHOOPS"
+
+    monkeypatch.setattr(mod.httpx, "stream", lambda *a, **kw: FakeStream())
+
+    result = mod.dispatch(
+        {
+            "action": "download",
+            "request": {
+                "url": "https://arxiv.org/pdf/2401.01234",
+                "category": "citation",
+                "filename": "2401.01234",
+                "format": "pdf",
+            },
+        }
+    )
+    assert result["ok"] is True
+    assert "skipped" in result
+    assert existing.read_bytes() == b"x" * 2048  # unchanged
+
+
+def test_dispatch_download_handles_http_errors(tmp_path, monkeypatch):
+    mod = load_host()
+    monkeypatch.setattr(mod, "PAPERS_ROOT", tmp_path / "papers")
+
+    class FakeStream:
+        status_code = 404
+        headers = {"content-type": "text/plain"}
+
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def iter_bytes(self): return iter(())
+
+    monkeypatch.setattr(mod.httpx, "stream", lambda *a, **kw: FakeStream())
+
+    result = mod.dispatch(
+        {
+            "action": "download",
+            "request": {
+                "url": "https://example.com/missing",
+                "category": "citation",
+                "filename": "missing",
+                "format": "pdf",
+            },
+        }
+    )
+    assert result["ok"] is False
+    assert "404" in result["error"]
+
+
 def test_send_message_writes_length_prefixed_json():
     mod = load_host()
     out = io.BytesIO()
