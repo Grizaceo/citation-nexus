@@ -1,0 +1,185 @@
+import { describe, it, expect } from "vitest";
+import {
+  getDownloadInfo,
+  planBatch,
+} from "@/patterns/downloader";
+import type { Finding } from "@/patterns/core";
+
+function mkFinding(overrides: Partial<Finding>): Finding {
+  return {
+    patternId: "arxiv.id",
+    category: "citation",
+    label: "arXiv",
+    text: "2401.01234",
+    start: 0,
+    end: 10,
+    node: {} as Text,
+    source: "meta",
+    confidence: 1.0,
+    ...overrides,
+  };
+}
+
+describe("getDownloadInfo — gating", () => {
+  it("returns null for text-body matches (source === 'text')", () => {
+    const f = mkFinding({ source: "text", confidence: 0.7 });
+    expect(getDownloadInfo(f)).toBe(null);
+  });
+
+  it("returns null for low-confidence matches (canonical=0.9 survives, body=0.7 rejected)", () => {
+    const f = mkFinding({ source: "text", confidence: 0.84 });
+    // source === "text" trumps confidence — the gate runs first.
+    expect(getDownloadInfo(f)).toBe(null);
+  });
+
+  it("returns null when confidence is below 0.85 but source is not 'text'", () => {
+    // E.g. some future source with confidence 0.8. We still
+    // gate on 0.85 to keep the rule simple.
+    const f = mkFinding({
+      source: "canonical",
+      confidence: 0.8,
+    });
+    expect(getDownloadInfo(f)).toBe(null);
+  });
+
+  it("accepts meta-tag (confidence 1.0)", () => {
+    const f = mkFinding({ source: "meta", confidence: 1.0 });
+    expect(getDownloadInfo(f)).not.toBe(null);
+  });
+
+  it("accepts JSON-LD (confidence 0.95)", () => {
+    const f = mkFinding({ source: "json-ld", confidence: 0.95 });
+    expect(getDownloadInfo(f)).not.toBe(null);
+  });
+
+  it("accepts canonical link (confidence 0.9)", () => {
+    const f = mkFinding({ source: "canonical", confidence: 0.9 });
+    expect(getDownloadInfo(f)).not.toBe(null);
+  });
+});
+
+describe("getDownloadInfo — arXiv", () => {
+  it("arxiv.id bare ID -> arxiv.org/pdf/<id>.pdf", () => {
+    const f = mkFinding({
+      patternId: "arxiv.id",
+      text: "2401.01234",
+    });
+    const info = getDownloadInfo(f);
+    expect(info).toEqual({
+      url: "https://arxiv.org/pdf/2401.01234",
+      category: "citation",
+      filename: "2401.01234",
+      format: "pdf",
+    });
+  });
+
+  it("arxiv.id with version suffix -> arxiv.org/pdf/<id>v<N>.pdf", () => {
+    const f = mkFinding({
+      patternId: "arxiv.id",
+      text: "2401.01234v2",
+    });
+    const info = getDownloadInfo(f);
+    expect(info?.url).toBe("https://arxiv.org/pdf/2401.01234v2");
+    expect(info?.filename).toBe("2401.01234v2");
+  });
+
+  it("arxiv.abs (also returns bare ID) -> same URL", () => {
+    const f = mkFinding({
+      patternId: "arxiv.abs",
+      text: "2605.22166",
+    });
+    const info = getDownloadInfo(f);
+    expect(info?.url).toBe("https://arxiv.org/pdf/2605.22166");
+  });
+
+  it("rejects malformed arXiv IDs", () => {
+    const f = mkFinding({ text: "not-an-id" });
+    expect(getDownloadInfo(f)).toBe(null);
+  });
+});
+
+describe("getDownloadInfo — DOI", () => {
+  it("doi -> doi.org/<doi> (follows redirect)", () => {
+    const f = mkFinding({
+      patternId: "doi",
+      text: "10.1038/nature12373",
+    });
+    const info = getDownloadInfo(f);
+    expect(info?.url).toBe("https://doi.org/10.1038/nature12373");
+    // Slash in DOI becomes underscore for filesystem safety.
+    expect(info?.filename).toBe("10.1038_nature12373");
+    expect(info?.format).toBe("html");
+  });
+
+  it("doi.url with full URL also yields the bare DOI", () => {
+    const f = mkFinding({
+      patternId: "doi.url",
+      text: "10.1234/example",
+    });
+    const info = getDownloadInfo(f);
+    expect(info?.url).toBe("https://doi.org/10.1234/example");
+  });
+
+  it("rejects DOI with control characters", () => {
+    const f = mkFinding({ text: "10.1234/\x00bad" });
+    expect(getDownloadInfo(f)).toBe(null);
+  });
+});
+
+describe("getDownloadInfo — unsupported patterns", () => {
+  it("returns null for pmid (no direct PDF)", () => {
+    const f = mkFinding({ patternId: "pmid", text: "12345" });
+    expect(getDownloadInfo(f)).toBe(null);
+  });
+
+  it("returns null for pmcid", () => {
+    const f = mkFinding({ patternId: "pmcid", text: "PMC123456" });
+    expect(getDownloadInfo(f)).toBe(null);
+  });
+
+  it("returns null for github (clone URL parsing needed)", () => {
+    const f = mkFinding({ patternId: "github", text: "facebook/react" });
+    expect(getDownloadInfo(f)).toBe(null);
+  });
+
+  it("returns null for biorxiv/medrxiv (need full DOI)", () => {
+    const f = mkFinding({
+      patternId: "biorxiv",
+      text: "10.1101/2021.01.01.123456",
+    });
+    expect(getDownloadInfo(f)).toBe(null);
+  });
+
+  it("returns null for science patterns (no paper to download)", () => {
+    const f = mkFinding({ patternId: "cs.model", text: "Llama-3" });
+    expect(getDownloadInfo(f)).toBe(null);
+    const f2 = mkFinding({ patternId: "math.theorem", text: "Theorem 1.2" });
+    expect(getDownloadInfo(f2)).toBe(null);
+  });
+});
+
+describe("planBatch", () => {
+  it("separates planned downloads from skipped findings", () => {
+    const findings: Finding[] = [
+      mkFinding({ patternId: "arxiv.id", text: "2401.01234", source: "meta", confidence: 1.0 }),
+      mkFinding({ patternId: "arxiv.id", text: "2506.09999", source: "text", confidence: 0.7 }),
+      mkFinding({ patternId: "doi", text: "10.1038/x", source: "json-ld", confidence: 0.95 }),
+      mkFinding({ patternId: "pmid", text: "12345", source: "meta", confidence: 1.0 }),
+    ];
+    const plan = planBatch(findings);
+    expect(plan.planned).toHaveLength(2);
+    expect(plan.skipped).toHaveLength(2);
+    expect(plan.planned.map((p) => p.finding.text).sort()).toEqual([
+      "10.1038/x",
+      "2401.01234",
+    ]);
+    expect(plan.skipped[0]!.reason).toMatch(/text-body/);
+    expect(plan.skipped[1]!.reason).toMatch(/not downloadable/);
+  });
+
+  it("returns empty plans and skipped lists for empty input", () => {
+    const plan = planBatch([]);
+    expect(plan.planned).toEqual([]);
+    expect(plan.skipped).toEqual([]);
+  });
+});
