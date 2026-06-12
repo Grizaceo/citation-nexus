@@ -30,6 +30,14 @@ let currentTabId: number | undefined;
 let lastFindingsCount = -1;
 let pollHandle: number | undefined;
 
+// Cooldown for the auto-rescan. If the popup opens and finds an
+// empty state (background service worker was suspended and the
+// in-memory tabStates was wiped, or the content script never
+// scanned), trigger a re-scan. The cooldown prevents an infinite
+// loop on pages that genuinely have 0 findings.
+let lastAutoRescanAt = 0;
+const AUTO_RESCAN_COOLDOWN_MS = 30_000;
+
 async function loadTab(): Promise<void> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) {
@@ -47,6 +55,22 @@ async function loadTab(): Promise<void> {
   }
   const state = res.state as TabState;
   paintPopup(state);
+
+  // Empty state = the background has no findings for this tab. Two
+  // common causes: (1) the content script hasn't scanned yet (page
+  // just loaded), or (2) the service worker was suspended and the
+  // in-memory tabStates map was wiped between the last scan and
+  // this popup open. In both cases, a re-scan produces fresh state.
+  // We don't re-scan on every poll — the 30s cooldown stops us
+  // from looping on pages that legitimately have 0 findings.
+  if (
+    (state.findings ?? []).length === 0 &&
+    Date.now() - lastAutoRescanAt > AUTO_RESCAN_COOLDOWN_MS
+  ) {
+    lastAutoRescanAt = Date.now();
+    setSub("Scanning…");
+    void chrome.runtime.sendMessage({ type: MSG.REQUEST_SCAN });
+  }
 }
 
 function setSub(text: string): void {
