@@ -11,12 +11,14 @@
 // (notably YouTube, where the description loads after document_idle).
 
 import { getDownloadUrl, getDownloadLabel } from "@/lib/download";
+import { getDownloadInfo } from "@/patterns/downloader";
 import type { Finding } from "@/patterns/core";
 
 const MSG = {
   GET_TAB_CITATIONS: "GET_TAB_CITATIONS",
   REQUEST_SCAN: "REQUEST_SCAN",
   COPY_FINDING: "COPY_FINDING",
+  DOWNLOAD_PAPER: "DOWNLOAD_PAPER",
 };
 
 // Persisted in chrome.storage.local. The content script reads the
@@ -158,17 +160,69 @@ function renderFindingRow(f: Finding): HTMLElement {
 
   const url = getDownloadUrl(f);
   if (url) {
-    const dlBtn = document.createElement("button");
-    dlBtn.className = "nx-mini-btn nx-mini-btn-accent";
-    dlBtn.textContent = "Download";
-    dlBtn.title = getDownloadLabel(f) ?? url;
-    dlBtn.addEventListener("click", () => {
-      // Open in a new tab; the popup stays open. We don't `await`
-      // because chrome.tabs.create returns a Promise only in MV3
-      // and we don't need the result.
+    const openBtn = document.createElement("button");
+    openBtn.className = "nx-mini-btn";
+    openBtn.textContent = "Open";
+    openBtn.title = `Open ${url} in a new tab`;
+    openBtn.addEventListener("click", () => {
       void chrome.tabs.create({ url });
     });
-    actions.append(dlBtn);
+    actions.append(openBtn);
+  }
+
+  // [Save] button — appears only for high-confidence findings
+  // (meta tag, JSON-LD, canonical link). The pure downloader
+  // returns null for text-body matches (regla 'solo en las
+  // certificadas'). On click, sends DOWNLOAD_PAPER to the
+  // background which routes to the native host. The native host
+  // fetches the URL and writes to the local vault.
+  const saveInfo = getDownloadInfo(f);
+  if (saveInfo) {
+    const saveBtn = document.createElement("button");
+    saveBtn.className = "nx-mini-btn nx-mini-btn-accent";
+    saveBtn.textContent = "Save";
+    saveBtn.title = `Download ${saveInfo.filename}.${saveInfo.format} to local vault`;
+    saveBtn.addEventListener("click", async () => {
+      const originalLabel = saveBtn.textContent;
+      saveBtn.textContent = "Saving…";
+      saveBtn.disabled = true;
+      try {
+        const res = await chrome.runtime.sendMessage({
+          type: MSG.DOWNLOAD_PAPER,
+          payload: saveInfo,
+        });
+        if (res?.ok && res.data?.ok) {
+          const data = res.data as {
+            path: string;
+            size: number;
+            skipped?: string;
+          };
+          if (data.skipped) {
+            saveBtn.textContent = "Saved ✓";
+            saveBtn.title = `Already exists: ${data.path}`;
+          } else {
+            saveBtn.textContent = "Saved ✓";
+            const kb = Math.round(data.size / 1024);
+            saveBtn.title = `${data.path} (${kb} KB)`;
+          }
+        } else {
+          const err = res?.data?.error || res?.error || "unknown error";
+          saveBtn.textContent = "Failed";
+          saveBtn.title = err;
+        }
+      } catch (e) {
+        saveBtn.textContent = "Failed";
+        saveBtn.title = String(e);
+      } finally {
+        saveBtn.disabled = false;
+        setTimeout(() => {
+          if (saveBtn.textContent !== "Failed") {
+            saveBtn.textContent = originalLabel;
+          }
+        }, 3000);
+      }
+    });
+    actions.append(saveBtn);
   }
 
   row.append(main, actions);

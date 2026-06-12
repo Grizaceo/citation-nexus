@@ -20,6 +20,7 @@ export const MSG = {
   IMPORT_BRIDGE: "IMPORT_BRIDGE",
   NATIVE_HEALTH: "NATIVE_HEALTH",
   NATIVE_IMPORT: "NATIVE_IMPORT",
+  DOWNLOAD_PAPER: "DOWNLOAD_PAPER",
 } as const;
 
 export type MessageType = (typeof MSG)[keyof typeof MSG];
@@ -135,6 +136,25 @@ export function handleMessage(
           deps.sendNativeMessage(
             "com.nexus.host",
             { action: "import", request: msg.payload },
+            (resp) => resolve({ ok: true, data: resp })
+          );
+        } catch (e) {
+          resolve({ ok: false, error: String(e) });
+        }
+      });
+      return { sync: false, reply: promise };
+    }
+    case MSG.DOWNLOAD_PAPER: {
+      // Same shape as NATIVE_IMPORT — calls the native host's
+      // 'download' action, which fetches the URL and writes to
+      // ~/.local/share/nexus/vault/papers/<category>/<filename>.<ext>.
+      // The popup passes the DownloadInfo (url, category, filename,
+      // format) computed by the pure downloader module.
+      const promise = new Promise<unknown>((resolve) => {
+        try {
+          deps.sendNativeMessage(
+            "com.nexus.host",
+            { action: "download", request: msg.payload },
             (resp) => resolve({ ok: true, data: resp })
           );
         } catch (e) {
