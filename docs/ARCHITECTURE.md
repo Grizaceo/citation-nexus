@@ -84,16 +84,29 @@ exists to expose the same data over a CLI-friendly JSON API.
 - Speaks Chrome's length-prefixed JSON framing.
 - Forwards `action: import|patterns|health` to the bridge.
 
+### Native client (`src/lib/native-client.ts`)
+
+- TypeScript wrapper around `chrome.runtime.sendNativeMessage` with the
+  registered host name (`com.nexus.host`).
+- Exposes `nativeHealth()`, `nativeImport(req)`, `nativePatterns()`.
+- The extension's background worker (`src/lib/background-handler.ts`)
+  routes two new MSG types via the deps-injected `sendNativeMessage`:
+  `NATIVE_HEALTH` and `NATIVE_IMPORT`. This path is the same shape as
+  the HTTP bridge path, just over a different transport.
+- The host is useful when an agent wants the message to *originate from*
+  the extension itself, or as a fallback when the bridge HTTP server
+  is not running.
+
 ## Privacy
 
 - All pattern matching happens in the page context (the content script).
 - The bridge is loopback-only; no remote network exposure.
-- The only external HTTP calls are to arXiv/CrossRef/EuropePMC APIs when
-  downloading metadata, and those are opt-in per action.
+- The native host only forwards to the same loopback bridge.
+- The extension never makes external HTTP calls on its own.
 
 ## Permissions
 
-- `storage`, `activeTab`, `clipboardWrite`, `scripting`, `downloads`,
-  `nativeMessaging`.
-- Host permissions: arxiv.org, eutils.ncbi.nlm.nih.gov, api.github.com,
-  api.crossref.org, europepmc, biorxiv API, plus `127.0.0.1:3002`.
+- `storage`, `activeTab`, `clipboardWrite`, `scripting`, `nativeMessaging`.
+- Host permissions: `127.0.0.1:3002/*` and `localhost:3002/*` (the local
+  bridge only). All other API hosts were dropped — the extension never
+  makes remote HTTP calls.

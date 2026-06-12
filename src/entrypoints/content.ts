@@ -5,11 +5,12 @@
 import "@/assets/content.css";
 import { getDefaultRegistry } from "@/patterns/registry";
 import { runScanCycle } from "@/lib/content-runner";
+import type { ContentScriptContext } from "wxt/utils/content-script-context";
 
 export default defineContentScript({
   matches: ["<all_urls>"],
   runAt: "document_idle",
-  main(ctx) {
+  main(ctx: ContentScriptContext) {
     // WXT's IIFE wrapper at the bottom of the bundle re-throws any
     // synchronous error from main() up to the page console. To make
     // sure the user never sees an "Uncaught" error here — including

@@ -14,6 +14,11 @@ export default defineBackground(() => {
       clipboard: navigator.clipboard,
       executeScript: (tabId: number, files: string[]) =>
         chrome.scripting.executeScript({ target: { tabId }, files }),
+      sendNativeMessage: (
+        application: string,
+        message: any,
+        callback: (response: unknown) => void
+      ) => chrome.runtime.sendNativeMessage(application, message, callback),
     };
     const { sync, reply } = handleMessage(msg, sender, deps);
     if (sync) {

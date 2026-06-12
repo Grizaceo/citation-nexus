@@ -15,6 +15,7 @@ export default defineConfig({
       "activeTab",
       "clipboardWrite",
       "scripting",
+      "nativeMessaging",
     ],
     host_permissions: [
       "http://127.0.0.1:3002/*",
