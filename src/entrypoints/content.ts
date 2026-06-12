@@ -12,6 +12,11 @@ import type { ContentScriptContext } from "wxt/utils/content-script-context";
 // and is observable from every context (popup, background,
 // content script, options page).
 const PAUSED_KEY = "nx.paused.v1";
+// When false (default), only the sentence wrapper renders —
+// citation IDs are NOT visually highlighted in the page, per
+// the "quiet diagonal reading" requirement. Toggled from the
+// popup's "Show citation keywords" checkbox.
+const KEYWORDS_KEY = "nx.keywords.v1";
 
 export default defineContentScript({
   matches: ["<all_urls>"],
@@ -75,6 +80,30 @@ export default defineContentScript({
         }
       );
 
+      // Keyword-highlight flag: same shape as the pause flag.
+      // Default false — the page is visually quiet by default,
+      // suitable for diagonal reading. The popup's "Show
+      // citation keywords" checkbox flips this; when true, we
+      // re-scan so the new keyword highlights are emitted.
+      let showKeywords = false;
+      chrome.storage.local
+        .get(KEYWORDS_KEY)
+        .then((v: Record<string, unknown>) => {
+          showKeywords = v[KEYWORDS_KEY] === true;
+        });
+      chrome.storage.onChanged.addListener(
+        (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+          if (area !== "local") return;
+          if (!(KEYWORDS_KEY in changes)) return;
+          const newVal = changes[KEYWORDS_KEY].newValue === true;
+          showKeywords = newVal;
+          // Re-scan so the new visibility takes effect immediately.
+          // (Sentence wrappers are always emitted, so toggling
+          //  on adds keyword spans; toggling off removes them.)
+          runScan();
+        }
+      );
+
       /** Remove every <mark.nx-sentence> and <span.nx-highlight>
        *  we previously inserted. Walks shadow roots too, mirroring
        *  the scanner so we don't leave half-cleared state in any
@@ -130,29 +159,35 @@ export default defineContentScript({
         if (!chrome.runtime?.id) return;
         isRendering = true;
         try {
-          const n = runScanCycle(document.body, registry, page, (msg) => {
-            // Same guard at the call site: sendMessage is the actual
-            // thing that throws, and we want to swallow any race
-            // between the runtime.id check and the call.
-            if (!chrome.runtime?.id) return;
-            try {
-              // Diagnostic: log every send so the user can verify in
-              // DevTools console that the message reached the background.
-              // Cheap, single line, prefixed for grep.
-              if (typeof console !== "undefined") {
-                console.debug(
-                  `[citation-nexus] CITATIONS_UPDATE findings=${msg.payload?.findings?.length ?? 0} url=${msg.payload?.url?.slice(0, 60) ?? ""}`
-                );
+          const n = runScanCycle(
+            document.body,
+            registry,
+            page,
+            (msg) => {
+              // Same guard at the call site: sendMessage is the actual
+              // thing that throws, and we want to swallow any race
+              // between the runtime.id check and the call.
+              if (!chrome.runtime?.id) return;
+              try {
+                // Diagnostic: log every send so the user can verify in
+                // DevTools console that the message reached the background.
+                // Cheap, single line, prefixed for grep.
+                if (typeof console !== "undefined") {
+                  console.debug(
+                    `[citation-nexus] CITATIONS_UPDATE findings=${msg.payload?.findings?.length ?? 0} url=${msg.payload?.url?.slice(0, 60) ?? ""}`
+                  );
+                }
+                chrome.runtime.sendMessage(msg);
+              } catch (e) {
+                if (typeof console !== "undefined") {
+                  console.debug(
+                    `[citation-nexus] sendMessage failed: ${String(e)}`
+                  );
+                }
               }
-              chrome.runtime.sendMessage(msg);
-            } catch (e) {
-              if (typeof console !== "undefined") {
-                console.debug(
-                  `[citation-nexus] sendMessage failed: ${String(e)}`
-                );
-              }
-            }
-          });
+            },
+            { showKeywords }
+          );
           if (typeof console !== "undefined" && n > 0) {
             console.debug(`[citation-nexus] scan found ${n} matches`);
           }

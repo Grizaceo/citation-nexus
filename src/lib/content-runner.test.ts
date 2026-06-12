@@ -21,7 +21,8 @@ describe("runScanCycle", () => {
       p,
       registry,
       { url: "https://example.com", title: "T" },
-      (msg) => sent.push(msg)
+      (msg) => sent.push(msg),
+      { showKeywords: true }
     );
     expect(n).toBeGreaterThan(0);
     expect(p.querySelectorAll("mark.nx-sentence").length).toBe(1);
@@ -30,6 +31,52 @@ describe("runScanCycle", () => {
     expect(sent[0]!.type).toBe("CITATIONS_UPDATE");
     expect(sent[0]!.payload.url).toBe("https://example.com");
     expect(sent[0]!.payload.title).toBe("T");
+  });
+
+  it("default behavior is sentence-only: no keyword highlights", () => {
+    // Per the user vision: diagonal reading is the visual, citation
+    // keywords should NOT be highlighted in the page by default.
+    // The user can opt in via the popup's "Show citation keywords"
+    // checkbox, which propagates through showKeywords: true.
+    const p = mount("We trained a Transformer on MNIST.");
+    const n = runScanCycle(
+      p,
+      registry,
+      { url: "u", title: "t" },
+      () => {}
+    );
+    expect(n).toBeGreaterThan(0);
+    // Sentence wrapper IS rendered (diagonal reading).
+    expect(p.querySelectorAll("mark.nx-sentence").length).toBe(1);
+    // Keyword highlight spans are NOT emitted (no distraction).
+    expect(p.querySelectorAll("span.nx-highlight").length).toBe(0);
+  });
+
+  it("showKeywords: false explicitly also suppresses keyword highlights", () => {
+    const p = mount("Reference: arXiv:2401.01234.");
+    const n = runScanCycle(
+      p,
+      registry,
+      { url: "u", title: "t" },
+      () => {},
+      { showKeywords: false }
+    );
+    expect(n).toBeGreaterThan(0);
+    expect(p.querySelectorAll("mark.nx-sentence").length).toBe(1);
+    expect(p.querySelectorAll("span.nx-highlight").length).toBe(0);
+  });
+
+  it("showKeywords: true renders keyword highlights AND sentence wrapper", () => {
+    const p = mount("Reference: arXiv:2401.01234.");
+    runScanCycle(
+      p,
+      registry,
+      { url: "u", title: "t" },
+      () => {},
+      { showKeywords: true }
+    );
+    expect(p.querySelectorAll("mark.nx-sentence").length).toBe(1);
+    expect(p.querySelectorAll("span.nx-highlight").length).toBeGreaterThan(0);
   });
 
   it("returns 0 and emits no findings on plain prose", () => {

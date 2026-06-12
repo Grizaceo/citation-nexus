@@ -136,15 +136,21 @@ export function findSentences(text: string): Sentence[] {
 function buildSpanTree(
   text: string,
   findings: Finding[],
-  sentences: Sentence[]
+  sentences: Sentence[],
+  options: { showKeywords: boolean } = { showKeywords: true }
 ): Span[] {
-  // Map findings to keyword spans.
-  const keywordSpans: Span[] = findings.map((f) => ({
-    start: f.start,
-    end: f.end,
-    className: `${CLASS_PREFIX} ${CLASS_PREFIX}-${f.category}`,
-    tooltip: `${f.label}: ${f.text}`,
-  }));
+  // Map findings to keyword spans. Gated by showKeywords: when
+  // false, only sentence wrappers are emitted (the actual
+  // diagonal-reading visual), and the bright per-category
+  // keyword highlights stay dormant.
+  const keywordSpans: Span[] = options.showKeywords
+    ? findings.map((f) => ({
+        start: f.start,
+        end: f.end,
+        className: `${CLASS_PREFIX} ${CLASS_PREFIX}-${f.category}`,
+        tooltip: `${f.label}: ${f.text}`,
+      }))
+    : [];
 
   // Map sentences to sentence spans, but only those that contain at
   // least one finding. We clip the sentence to skip leading/trailing
@@ -238,7 +244,10 @@ function renderToFragment(
   return frag;
 }
 
-export function renderHighlights(findings: Finding[]): void {
+export function renderHighlights(
+  findings: Finding[],
+  options: { showKeywords?: boolean } = {}
+): void {
   if (findings.length === 0) return;
   // Only text-body findings are highlightable. Meta-tag and
   // JSON-LD findings are metadata (no DOM text to wrap); they
@@ -258,7 +267,14 @@ export function renderHighlights(findings: Finding[]): void {
     const value = text.nodeValue ?? "";
     if (!value) continue;
     const sentences = findSentences(value);
-    const spans = buildSpanTree(value, list, sentences);
+    // Sentence wrappers are always rendered (they ARE the diagonal-
+    // reading visual). Keyword highlights are gated by the
+    // `showKeywords` flag — when false, the spans aren't emitted
+    // at all, so the page is visually unchanged except for the
+    // sentence wrapper.
+    const spans = buildSpanTree(value, list, sentences, {
+      showKeywords: options.showKeywords !== false,
+    });
     if (spans.length === 0) continue;
     const frag = renderToFragment(value, spans);
     const parent = text.parentNode;

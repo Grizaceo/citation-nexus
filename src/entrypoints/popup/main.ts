@@ -23,6 +23,13 @@ const MSG = {
 // same key before each scan and listens for changes. Toggling
 // here takes effect within ~1s on every active tab.
 const PAUSED_KEY = "nx.paused.v1";
+// When true, the per-category keyword highlight spans are emitted
+// in the page (the bright colorful boxes). Default false: only
+// the subtle sentence wrapper renders, so diagonal reading
+// stays clean. Citation IDs still appear in the popup; the
+// [Download PDF] action still works — the keyword is just not
+// visually highlighted.
+const KEYWORDS_KEY = "nx.keywords.v1";
 
 interface TabState {
   url: string;
@@ -178,6 +185,42 @@ document.getElementById("nx-rescan")?.addEventListener("click", async () => {
 document.getElementById("nx-options")?.addEventListener("click", () => {
   chrome.runtime.openOptionsPage();
 });
+
+// ── Show keywords toggle ──────────────────────────────────────
+// Same pattern as the pause toggle. The content script listens
+// to the same key and re-scans on change, so the toggle takes
+// effect immediately on every active tab.
+let showKeywords = false;
+const keywordsCheckbox = document.getElementById(
+  "nx-keywords"
+) as HTMLInputElement | null;
+
+function paintKeywords(): void {
+  if (keywordsCheckbox) keywordsCheckbox.checked = showKeywords;
+}
+
+async function loadKeywordsState(): Promise<void> {
+  const stored = await chrome.storage.local.get(KEYWORDS_KEY);
+  showKeywords = stored[KEYWORDS_KEY] === true;
+  paintKeywords();
+}
+
+keywordsCheckbox?.addEventListener("change", async () => {
+  showKeywords = keywordsCheckbox.checked;
+  await chrome.storage.local.set({ [KEYWORDS_KEY]: showKeywords });
+});
+
+// Re-render the toggle if another context (DevTools, the
+// content script itself) changes the key.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local") return;
+  if (KEYWORDS_KEY in changes) {
+    showKeywords = changes[KEYWORDS_KEY].newValue === true;
+    paintKeywords();
+  }
+});
+
+void loadKeywordsState();
 
 // ── Pause / Resume toggle ─────────────────────────────────────
 // Reads/writes the shared paused flag. The content script listens

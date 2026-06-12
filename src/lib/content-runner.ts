@@ -5,6 +5,7 @@
 
 import { applyPatterns, PatternRegistry } from "@/patterns/registry";
 import { renderHighlights } from "@/patterns/highlight";
+import type { Finding } from "@/patterns/core";
 
 export interface PageInfo {
   url: string;
@@ -26,14 +27,30 @@ export interface ScanMessage {
   };
 }
 
+export interface ScanOptions {
+  /**
+   * When false (default), only the sentence wrapper renders. Keyword
+   * highlight spans are not emitted at all — the page stays quiet
+   * for diagonal reading. When true, the bright per-category
+   * keyword highlights are rendered too.
+   */
+  showKeywords: boolean;
+}
+
 export function runScanCycle(
   root: Node,
   registry: PatternRegistry,
   page: PageInfo,
-  send: (msg: ScanMessage) => void
+  send: (msg: ScanMessage) => void,
+  options: ScanOptions = { showKeywords: false }
 ): number {
   const findings = applyPatterns(root, registry);
-  renderHighlights(findings);
+  // Only text-body findings are highlightable. Meta-tag and
+  // JSON-LD findings are metadata; they appear in the popup but
+  // the visual highlighter skips them. The `showKeywords` flag
+  // toggles whether keyword highlight spans are emitted at all
+  // (sentence wrappers are always rendered).
+  renderHighlights(findings, { showKeywords: options.showKeywords });
   send({
     type: "CITATIONS_UPDATE",
     payload: {
