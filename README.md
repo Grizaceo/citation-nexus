@@ -10,12 +10,11 @@ Chrome extension (Manifest V3) that detects **academic citations** and
 for **diagonal reading**, and exposes an **agentic JSON API** over a local
 HTTP bridge and a Chrome native messaging host.
 
-Built end-to-end as a showcase for the **MiniMax M3** model — a single
-greenfield repo that integrates a citation spotter (arXiv, DOI, PubMed,
-GitHub, bioRxiv, medRxiv) with a domain-agnostic English science pattern
-set (math, physics, biology, CS/ML, chemistry), plus a Python bridge and
-a native host that any CLI agent (Hermes, Claude, plain `curl`) can
-drive.
+A single greenfield repo that integrates a citation spotter (arXiv, DOI,
+PubMed, GitHub, bioRxiv, medRxiv) with a domain-agnostic English science
+pattern set (math, physics, biology, CS/ML, chemistry), plus a Python
+bridge and a native host that any CLI agent (Hermes, Claude, plain
+`curl`) can drive.
 
 ## What it does
 
