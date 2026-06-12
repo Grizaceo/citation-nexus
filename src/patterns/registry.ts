@@ -219,56 +219,103 @@ function isAbbreviation(text: string, dotPos: number): boolean {
 
 /**
  * DOM walker: visits every accepted text node under `root` and produces
- * Findings that carry a reference to their source text node (used by the
- * highlighter to wrap the right span in the page).
+ * Findings that carry a reference to their source text node (used by
+ * the highlighter to wrap the right span in the page).
+ *
+ * Recurses into open shadow roots. Many modern sites (Reddit's
+ * `<shreddit-post>`, GitHub's web components, parts of YouTube's
+ * metadata) render their text inside custom elements that use open
+ * shadow DOM. A plain `createTreeWalker(SHOW_TEXT)` does not cross
+ * shadow boundaries, so text inside those roots was invisible to
+ * earlier versions of this scanner. This recursive walker fixes
+ * that. Closed shadow roots remain inaccessible (browser-enforced).
  */
 export function applyPatterns(
   root: Node,
   registry: PatternRegistry
 ): Finding[] {
   const findings: Finding[] = [];
-  const doc = root.ownerDocument ??
+  const doc =
+    root.ownerDocument ??
+    (root as Document).defaultView?.document ??
     (globalThis as { document?: Document }).document;
   if (!doc) {
     throw new Error("applyPatterns: no document available");
   }
-  const walker = doc.createTreeWalker(root, 0x4 /* SHOW_TEXT */, {
-    acceptNode(node) {
-      const parent = node.parentElement;
-      if (!parent) return 2;
-      const tag = parent.tagName;
-      if (tag === "SCRIPT" || tag === "STYLE" || tag === "NOSCRIPT")
-        return 2;
-      if (
-        parent.classList.contains("nx-highlight") ||
-        parent.classList.contains("nx-sentence")
-      )
-        return 2;
-      if (!node.nodeValue || node.nodeValue.trim().length === 0) return 2;
-      return 1 /* FILTER_ACCEPT */;
-    },
-  });
 
-  let node: Node | null;
-  while ((node = walker.nextNode())) {
-    const text = node as Text;
-    const value = text.nodeValue ?? "";
-    if (!value) continue;
-    const local: Finding[] = applyPatternsToText(value, registry).map(
-      (f) =>
-        ({
-          patternId: f.patternId,
-          category: f.category,
-          label: f.label,
-          text: f.text,
-          start: f.start,
-          end: f.end,
-          node: text,
-        }) as Finding
-    );
-    findings.push(...local);
+  walkTextNodes(root);
+
+  function walkTextNodes(node: Node): void {
+    // If this is an element with a shadow root, walk into the shadow
+    // first. Shadows can contain their own custom elements that
+    // ALSO have shadows, so this is recursive.
+    if (node.nodeType === 1 /* ELEMENT_NODE */) {
+      const el = node as Element;
+      if (el.shadowRoot) {
+        walkTextNodes(el.shadowRoot);
+      }
+    }
+    // Direct text node — check the accept rules and emit findings.
+    if (node.nodeType === 3 /* TEXT_NODE */) {
+      const text = node as Text;
+      // Use parentNode (not parentElement) because a text node inside
+      // a shadow root has a DocumentFragment parent whose
+      // parentElement is null. Treating that as 'no parent' caused
+      // shadow content to be silently skipped.
+      const parent = text.parentNode;
+      if (!parent) return;
+      if (!acceptTextNode(text, parent)) return;
+      const value = text.nodeValue ?? "";
+      if (!value) return;
+      const local: Finding[] = applyPatternsToText(value, registry).map(
+        (f) =>
+          ({
+            patternId: f.patternId,
+            category: f.category,
+            label: f.label,
+            text: f.text,
+            start: f.start,
+            end: f.end,
+            node: text,
+          }) as Finding
+      );
+      findings.push(...local);
+      return;
+    }
+    // Otherwise recurse into children.
+    const children = (node as ParentNode).childNodes;
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child) walkTextNodes(child);
+    }
   }
+
   return findings;
+}
+
+/**
+ * Decide whether a text node should be scanned. The parent can be
+ * either an Element (most cases) or a DocumentFragment (text node
+ * directly under a shadow root). Both are accepted as long as the
+ * text node isn't inside a <script>/<style>/our-own-wrapper.
+ */
+function acceptTextNode(text: Text, parent: Node): boolean {
+  // Element parent: check tag and class lists.
+  if (parent.nodeType === 1 /* ELEMENT_NODE */) {
+    const el = parent as Element;
+    const tag = el.tagName;
+    if (tag === "SCRIPT" || tag === "STYLE" || tag === "NOSCRIPT") return false;
+    if (
+      el.classList.contains("nx-highlight") ||
+      el.classList.contains("nx-sentence")
+    ) {
+      return false;
+    }
+  }
+  // DocumentFragment parent (shadow root with a bare text child) or
+  // element parent: just check the text content.
+  if (!text.nodeValue || text.nodeValue.trim().length === 0) return false;
+  return true;
 }
 
 function resolveOverlaps<

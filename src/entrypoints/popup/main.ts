@@ -19,6 +19,11 @@ const MSG = {
   COPY_FINDING: "COPY_FINDING",
 };
 
+// Persisted in chrome.storage.local. The content script reads the
+// same key before each scan and listens for changes. Toggling
+// here takes effect within ~1s on every active tab.
+const PAUSED_KEY = "nx.paused.v1";
+
 interface TabState {
   url: string;
   title: string;
@@ -173,6 +178,53 @@ document.getElementById("nx-rescan")?.addEventListener("click", async () => {
 document.getElementById("nx-options")?.addEventListener("click", () => {
   chrome.runtime.openOptionsPage();
 });
+
+// ── Pause / Resume toggle ─────────────────────────────────────
+// Reads/writes the shared paused flag. The content script listens
+// to the same flag via chrome.storage.onChanged and stops/starts
+// scanning accordingly. Stored in chrome.storage.local so it
+// survives service-worker suspension and is shared across popups.
+let isPaused = false;
+
+function paintStatus(): void {
+  const status = document.getElementById("nx-status");
+  const text = document.getElementById("nx-status-text");
+  const btn = document.getElementById("nx-toggle");
+  if (status) status.dataset.paused = String(isPaused);
+  if (text) text.textContent = isPaused ? "Paused" : "Active";
+  if (btn) {
+    btn.textContent = isPaused ? "Resume" : "Pause";
+    btn.title = isPaused ? "Click to resume scanning" : "Click to pause scanning";
+  }
+}
+
+async function loadPausedState(): Promise<void> {
+  const stored = await chrome.storage.local.get(PAUSED_KEY);
+  isPaused = stored[PAUSED_KEY] === true;
+  paintStatus();
+}
+
+document.getElementById("nx-toggle")?.addEventListener("click", async () => {
+  isPaused = !isPaused;
+  await chrome.storage.local.set({ [PAUSED_KEY]: isPaused });
+  paintStatus();
+  // Reset the auto-rescan cooldown so the new state is reflected
+  // immediately (and so a manual toggle doesn't get clobbered by
+  // a stale 'state is empty' check).
+  lastAutoRescanAt = 0;
+});
+
+// React to changes from other contexts (DevTools tweaks, another
+// popup, the content script itself).
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local") return;
+  if (PAUSED_KEY in changes) {
+    isPaused = changes[PAUSED_KEY].newValue === true;
+    paintStatus();
+  }
+});
+
+void loadPausedState();
 
 // ── Auto-refresh + listener ────────────────────────────────────
 // Re-poll every second while the popup is open. The popup context

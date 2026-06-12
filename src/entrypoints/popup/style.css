@@ -42,6 +42,54 @@ body {
   padding: 10px 14px 12px;
 }
 
+/* ── Status / Pause toggle ─────────────────────────────────── */
+.nx-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 10px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-2);
+  border-radius: 4px;
+  font-size: 12px;
+}
+.nx-status[data-paused="true"] {
+  border-left-color: #d4a017;
+  background: rgba(212, 160, 23, 0.08);
+}
+.nx-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(0, 200, 83, 0.2);
+}
+.nx-status[data-paused="true"] .nx-status-dot {
+  background: #d4a017;
+  box-shadow: 0 0 0 2px rgba(212, 160, 23, 0.2);
+}
+.nx-status-text {
+  flex: 1;
+  font-weight: 500;
+}
+.nx-status-btn {
+  background: transparent;
+  color: var(--fg-mute);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.nx-status-btn:hover {
+  border-color: var(--fg);
+  color: var(--fg);
+}
+
 .nx-stats {
   display: flex;
   align-items: baseline;

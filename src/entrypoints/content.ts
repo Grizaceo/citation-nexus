@@ -7,6 +7,12 @@ import { getDefaultRegistry } from "@/patterns/registry";
 import { runScanCycle } from "@/lib/content-runner";
 import type { ContentScriptContext } from "wxt/utils/content-script-context";
 
+// Shared with the popup. chrome.storage.local is the only
+// extension-wide state that survives service-worker suspension
+// and is observable from every context (popup, background,
+// content script, options page).
+const PAUSED_KEY = "nx.paused.v1";
+
 export default defineContentScript({
   matches: ["<all_urls>"],
   runAt: "document_idle",
@@ -33,7 +39,73 @@ export default defineContentScript({
       // visible as "StatStatStatStat..." on the page.
       let isRendering = false;
 
+      // Pause flag: read once on init, kept in sync via
+      // chrome.storage.onChanged. When true, runScan() becomes a
+      // no-op and existing highlights are removed. The flag is
+      // shared with the popup's pause/resume toggle.
+      let isPaused = false;
+      chrome.storage.local
+        .get(PAUSED_KEY)
+        .then((v: Record<string, unknown>) => {
+          isPaused = v[PAUSED_KEY] === true;
+        });
+      chrome.storage.onChanged.addListener(
+        (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+          if (area !== "local") return;
+          if (!(PAUSED_KEY in changes)) return;
+          isPaused = changes[PAUSED_KEY].newValue === true;
+          if (isPaused) {
+            // Clear existing highlights so the page looks "off".
+            clearHighlights();
+          } else {
+            // Resume: kick a fresh scan immediately.
+            runScan();
+          }
+        }
+      );
+
+      /** Remove every <mark.nx-sentence> and <span.nx-highlight>
+       *  we previously inserted. Walks shadow roots too, mirroring
+       *  the scanner so we don't leave half-cleared state in any
+       *  custom element. */
+      function clearHighlights(): void {
+        const root = document.body;
+        if (!root) return;
+        // Light DOM
+        unwrapAll(root.querySelectorAll("mark.nx-sentence"));
+        unwrapAll(root.querySelectorAll("span.nx-highlight"));
+        // Shadow roots (open only; closed roots are browser-inaccessible).
+        const stack: Element[] = [root];
+        while (stack.length) {
+          const el = stack.pop();
+          if (!el) continue;
+          if (el.shadowRoot) {
+            unwrapAll(el.shadowRoot.querySelectorAll("mark.nx-sentence"));
+            unwrapAll(el.shadowRoot.querySelectorAll("span.nx-highlight"));
+            // Continue walking inside the shadow.
+            for (const c of Array.from(el.shadowRoot.querySelectorAll("*"))) {
+              stack.push(c);
+              if (c.shadowRoot) stack.push(c);
+            }
+          }
+          for (const c of Array.from(el.children)) stack.push(c);
+        }
+      }
+      function unwrapAll(els: NodeListOf<Element>): void {
+        for (const el of Array.from(els)) {
+          const parent = el.parentNode;
+          if (!parent) continue;
+          while (el.firstChild) parent.insertBefore(el.firstChild, el);
+          parent.removeChild(el);
+        }
+      }
+
       function runScan() {
+        // Skip the whole cycle when paused.
+        if (isPaused) {
+          clearHighlights();
+          return;
+        }
         // When the extension is reloaded, the content script's
         // chrome.runtime context is invalidated: chrome.runtime.id
         // becomes null and any further sendMessage throws "Extension
