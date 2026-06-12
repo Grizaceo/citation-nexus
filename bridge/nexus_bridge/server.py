@@ -134,8 +134,13 @@ def scan(req: ScanRequest) -> ScanResponse:
 def import_finding(req: ImportRequest) -> ImportResponse:
     out_dir = DEFAULT_VAULT_ROOT / "imports" / req.category
     out_dir.mkdir(parents=True, exist_ok=True)
-    safe = "".join(c if c.isalnum() or c in "-_." else "_" for c in req.text)[:80]
+    # Filename: alphanumeric + dash + underscore. Drop dots, slashes,
+    # spaces, and any other shell-unfriendly character entirely.
+    safe = "".join(c if (c.isalnum() or c in "-_") else "_" for c in req.text)[:80]
     target = out_dir / f"{safe}.md"
+    # Defence in depth: refuse any path that escapes the vault.
+    if not str(target.resolve()).startswith(str(DEFAULT_VAULT_ROOT.resolve())):
+        return ImportResponse(ok=False, error="path traversal blocked")
     try:
         target.write_text(_render(req), encoding="utf-8")
         return ImportResponse(ok=True, stored={"path": str(target)})

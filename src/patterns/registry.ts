@@ -60,6 +60,9 @@ export interface PureFinding {
   /** Full match length before any capture-group extraction. Used to
    *  break ties in overlap resolution (longer = more specific). */
   originalLength: number;
+  /** Pattern priority. Higher wins on full ties (same start, same
+   *  originalLength). Default 0. */
+  priority: number;
 }
 
 /**
@@ -90,6 +93,7 @@ export function applyPatternsToText(
         start: m.index + offset,
         end: m.index + offset + captured.length,
         originalLength: m[0].length,
+        priority: p.priority ?? 0,
       });
     }
   }

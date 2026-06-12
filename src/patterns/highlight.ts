@@ -130,54 +130,64 @@ function renderToFragment(
 ): DocumentFragment {
   const frag = document.createDocumentFragment();
   let cursor = 0;
-  type StackEntry = { span: Span; el: HTMLElement };
-  const stack: StackEntry[] = [];
+  // Stack of currently-open sentence wrappers. Keyword spans are
+  // terminal (they contain their own text via textContent) and never
+  // get pushed. So a single open wrapper at any time is enough, but
+  // we keep a stack for correctness in case of future wrapper kinds.
+  const openStack: { span: Span; el: HTMLElement }[] = [];
+
+  function emitText(target: Node, start: number, end: number) {
+    if (end <= start) return;
+    target.appendChild(document.createTextNode(text.slice(start, end)));
+  }
+
+  function currentContainer(): Node {
+    if (openStack.length === 0) return frag;
+    return openStack[openStack.length - 1]!.el;
+  }
 
   for (const sp of spans) {
-    // If sp is nested inside an active stack entry, close enough stack
-    // so that the topmost covers it.
-    while (stack.length > 0) {
-      const top = stack[stack.length - 1]!;
-      if (sp.start >= top.span.end) {
-        // Close top: pop, and if there's still a parent, the parent
-        // becomes the active append target again.
-        stack.pop();
-      } else if (sp.start >= top.span.start && sp.end <= top.span.end) {
-        break; // nested
-      } else {
-        // Out of order or overlapping. Just pop and continue.
-        stack.pop();
-      }
+    // Close any open wrapper whose range has been fully passed.
+    while (openStack.length > 0 && sp.start >= openStack[openStack.length - 1]!.span.end) {
+      openStack.pop();
     }
 
-    // Emit any text from cursor up to sp.start, attached to the current
-    // top-of-stack element (or the fragment root).
-    const topEntry = stack[stack.length - 1];
-    const target: Node = topEntry ? topEntry.el : frag;
-    const localCursor = cursor;
-    if (sp.start > localCursor) {
-      target.appendChild(
-        document.createTextNode(text.slice(localCursor, sp.start))
-      );
+    const target = currentContainer();
+    // Emit any gap text from cursor to sp.start into the current
+    // container. This is what fills the sentence wrapper with the
+    // prose surrounding the keyword highlights.
+    emitText(target, cursor, sp.start);
+
+    if (sp.className === SENT_CLASS) {
+      // Sentence wrapper: transparent container. Create the <mark>,
+      // push it, and DO NOT advance the cursor (so the next emission
+      // goes inside it, starting at sp.start).
+      const el = document.createElement("mark");
+      el.className = sp.className;
+      target.appendChild(el);
+      openStack.push({ span: sp, el });
+      cursor = sp.start;
+    } else {
+      // Keyword highlight: terminal. Set its textContent and advance
+      // cursor past it.
+      const el = document.createElement("span");
+      el.className = sp.className;
+      if (sp.tooltip) el.setAttribute(TOOLTIP_ATTR, sp.tooltip);
+      el.textContent = text.slice(sp.start, sp.end);
+      target.appendChild(el);
+      cursor = sp.end;
     }
-
-    const el = document.createElement(
-      sp.className === SENT_CLASS ? "mark" : "span"
-    );
-    el.className = sp.className;
-    if (sp.tooltip) el.setAttribute(TOOLTIP_ATTR, sp.tooltip);
-    target.appendChild(el);
-    stack.push({ span: sp, el });
-    cursor = sp.end;
   }
 
-  // Close any remaining stack.
-  while (stack.length > 0) stack.pop();
+  // Emit any trailing text into the current container (the deepest
+  // open wrapper, or the root fragment if none). Do this BEFORE
+  // popping the stack so the trailing prose goes inside the last
+  // sentence wrapper, not beside it.
+  emitText(currentContainer(), cursor, text.length);
 
-  // Emit trailing text.
-  if (cursor < text.length) {
-    frag.appendChild(document.createTextNode(text.slice(cursor)));
-  }
+  // Close any remaining open wrapper.
+  while (openStack.length > 0) openStack.pop();
+
   return frag;
 }
 

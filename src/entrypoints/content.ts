@@ -3,33 +3,19 @@
 // and reports them to the background worker. Re-runs on SPA mutations.
 
 import "@/assets/content.css";
-import { applyPatterns, getDefaultRegistry } from "@/patterns/registry";
-import { renderHighlights } from "@/patterns/highlight";
+import { getDefaultRegistry } from "@/patterns/registry";
+import { runScanCycle } from "@/lib/content-runner";
 
 export default defineContentScript({
   matches: ["<all_urls>"],
   runAt: "document_idle",
   main() {
     const registry = getDefaultRegistry();
+    const page = { url: location.href, title: document.title };
 
-    function runScan(root: Node = document.body) {
-      const findings = applyPatterns(root, registry);
-      renderHighlights(findings);
-      // Send full findings to the background so the popup can break
-      // down by category. The background's tabStates map keys by tabId.
-      chrome.runtime.sendMessage({
-        type: "CITATIONS_UPDATE",
-        payload: {
-          url: location.href,
-          title: document.title,
-          findings: findings.map((f) => ({
-            patternId: f.patternId,
-            category: f.category,
-            text: f.text,
-            start: f.start,
-            end: f.end,
-          })),
-        },
+    function runScan() {
+      runScanCycle(document.body, registry, page, (msg) => {
+        chrome.runtime.sendMessage(msg);
       });
     }
 
@@ -38,7 +24,7 @@ export default defineContentScript({
 
     // Second pass: SPAs (YouTube, Reddit, arxiv) often inject content
     // *after* document_idle. A 2s timer catches the most common case.
-    setTimeout(() => runScan(), 2000);
+    setTimeout(runScan, 2000);
 
     // Third pass: MutationObserver for SPAs that mutate later (e.g.
     // arxiv's MathJax re-render, infinite scroll). We debounce to
@@ -59,6 +45,8 @@ export default defineContentScript({
     const urlWatcher = setInterval(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
+        page.url = location.href;
+        page.title = document.title;
         runScan();
       }
     }, 1000);
