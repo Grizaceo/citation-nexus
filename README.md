@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Goldset F1](https://img.shields.io/badge/goldset_F1-1.000-brightgreen)](goldset/reports/latest.md)
-[![Tests](https://img.shields.io/badge/tests-88_passing-brightgreen)](#tests)
+[![Tests](https://img.shields.io/badge/tests-96_passing-brightgreen)](#tests)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](src)
 
 Chrome extension (Manifest V3) that detects **academic citations** and
@@ -89,7 +89,7 @@ nexus-bridge --port 3002
 ### Tests
 
 ```bash
-npm test              # vitest: 71 unit + integration tests
+npm test              # vitest: 79 unit + integration tests
 cd bridge && pytest   # bridge API + protocol tests (10)
 cd ../agent && python3 -m pytest tests/   # native host tests (7)
 ```

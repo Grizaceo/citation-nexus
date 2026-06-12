@@ -18,6 +18,8 @@ export const MSG = {
   REQUEST_SCAN: "REQUEST_SCAN",
   COPY_FINDING: "COPY_FINDING",
   IMPORT_BRIDGE: "IMPORT_BRIDGE",
+  NATIVE_HEALTH: "NATIVE_HEALTH",
+  NATIVE_IMPORT: "NATIVE_IMPORT",
 } as const;
 
 export type MessageType = (typeof MSG)[keyof typeof MSG];
@@ -28,6 +30,11 @@ export interface BridgeDeps {
   fetch: typeof fetch;
   clipboard: { writeText: (text: string) => Promise<void> };
   executeScript: (tabId: number, files: string[]) => Promise<unknown>;
+  sendNativeMessage: (
+    application: string,
+    message: any,
+    callback: (response: unknown) => void
+  ) => unknown;
 }
 
 export interface IncomingMessage {
@@ -105,6 +112,36 @@ export function handleMessage(
         .then((data) => ({ ok: true, data }))
         .catch((e) => ({ ok: false, error: String(e) }));
       return { sync: false, reply: undefined };
+    }
+    case MSG.NATIVE_HEALTH: {
+      // Async; the reply is the host's response.
+      const promise = new Promise<unknown>((resolve) => {
+        try {
+          deps.sendNativeMessage(
+            "com.nexus.host",
+            { action: "health" },
+            (resp) => resolve({ ok: true, data: resp })
+          );
+        } catch (e) {
+          resolve({ ok: false, error: String(e) });
+        }
+      });
+      return { sync: false, reply: promise };
+    }
+    case MSG.NATIVE_IMPORT: {
+      // Async; the reply is the host's response.
+      const promise = new Promise<unknown>((resolve) => {
+        try {
+          deps.sendNativeMessage(
+            "com.nexus.host",
+            { action: "import", request: msg.payload },
+            (resp) => resolve({ ok: true, data: resp })
+          );
+        } catch (e) {
+          resolve({ ok: false, error: String(e) });
+        }
+      });
+      return { sync: false, reply: promise };
     }
     case MSG.REQUEST_SCAN: {
       const tabId = sender.tab?.id ?? -1;

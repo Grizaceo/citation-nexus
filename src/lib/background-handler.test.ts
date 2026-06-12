@@ -30,6 +30,15 @@ function makeDeps(overrides: Partial<BridgeDeps> = {}): BridgeDeps {
       tabId: number,
       files: string[]
     ) => Promise<unknown>,
+    sendNativeMessage: vi.fn(
+      (
+        _app: string,
+        _msg: unknown,
+        callback: (resp: unknown) => void
+      ) => {
+        callback({ ok: true, data: { version: "0.1.0" } });
+      }
+    ) as unknown as BridgeDeps["sendNativeMessage"],
     ...overrides,
   };
 }
@@ -179,6 +188,102 @@ describe("handleMessage — IMPORT_BRIDGE", () => {
     expect(sync).toBe(false);
     // The fetch was called; response will be sent later.
     expect(deps.fetch).toHaveBeenCalled();
+  });
+});
+
+describe("handleMessage — NATIVE_HEALTH", () => {
+  it("calls sendNativeMessage with the right app + action and replies with the host's response", async () => {
+    const deps = makeDeps({
+      sendNativeMessage: vi.fn(
+        (
+          _app: string,
+          _msg: unknown,
+          callback: (resp: unknown) => void
+        ) => {
+          callback({ ok: true, data: { ok: true, version: "0.1.0" } });
+        }
+      ) as unknown as BridgeDeps["sendNativeMessage"],
+    });
+    const { sync, reply } = handleMessage(
+      { type: MSG.NATIVE_HEALTH },
+      {},
+      deps
+    );
+    expect(sync).toBe(false);
+    expect(deps.sendNativeMessage).toHaveBeenCalledWith(
+      "com.nexus.host",
+      { action: "health" },
+      expect.any(Function)
+    );
+    const resolved = await (reply as Promise<{ ok: boolean; data: unknown }>);
+    expect(resolved.ok).toBe(true);
+    // The handler wraps the host response as { ok: true, data: <host resp> }.
+    // The host returned { ok: true, data: { ok: true, version: "0.1.0" } }.
+    // So resolved.data.data.version is the version string.
+    const hostResp = resolved.data as { data: { version: string } };
+    expect(hostResp.data.version).toBe("0.1.0");
+  });
+
+  it("returns { ok: false, error } when sendNativeMessage throws synchronously", async () => {
+    const deps = makeDeps({
+      sendNativeMessage: vi.fn(() => {
+        throw new Error("host not registered");
+      }) as unknown as BridgeDeps["sendNativeMessage"],
+    });
+    const { sync, reply } = handleMessage(
+      { type: MSG.NATIVE_HEALTH },
+      {},
+      deps
+    );
+    expect(sync).toBe(false);
+    const resolved = await (reply as Promise<{ ok: boolean; error: string }>);
+    expect(resolved.ok).toBe(false);
+    expect(resolved.error).toMatch(/host not registered/);
+  });
+});
+
+describe("handleMessage — NATIVE_IMPORT", () => {
+  it("wraps the payload in { action: 'import', request: payload }", async () => {
+    const deps = makeDeps({
+      sendNativeMessage: vi.fn(
+        (
+          _app: string,
+          _msg: unknown,
+          callback: (resp: unknown) => void
+        ) => {
+          callback({
+            ok: true,
+            data: { stored: { path: "/vault/x.md" } },
+          });
+        }
+      ) as unknown as BridgeDeps["sendNativeMessage"],
+    });
+    const { reply } = handleMessage(
+      {
+        type: MSG.NATIVE_IMPORT,
+        payload: {
+          category: "citation",
+          patternId: "arxiv.id",
+          text: "arXiv:2401.01234",
+        },
+      },
+      {},
+      deps
+    );
+    const resolved = await (reply as Promise<{ ok: boolean; data: unknown }>);
+    expect(resolved.ok).toBe(true);
+    expect(deps.sendNativeMessage).toHaveBeenCalledWith(
+      "com.nexus.host",
+      {
+        action: "import",
+        request: {
+          category: "citation",
+          patternId: "arxiv.id",
+          text: "arXiv:2401.01234",
+        },
+      },
+      expect.any(Function)
+    );
   });
 });
 

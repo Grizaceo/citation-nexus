@@ -1,6 +1,6 @@
 # Citation Nexus — Agent integration
 
-Two ways for an agent to drive Citation Nexus from the shell:
+Three ways for an agent to drive Citation Nexus from the shell.
 
 ## 1. HTTP bridge (recommended, no Chrome required)
 
@@ -48,15 +48,49 @@ Chrome can route messages to a small Python host binary:
    the host binary):
 
    ```ts
-   // inside the extension
+   // inside the extension's background handler
    chrome.runtime.sendNativeMessage("com.nexus.host", { action: "patterns" }, (resp) => {
      console.log(resp);
    });
    ```
 
+   Or use the typed client (`src/lib/native-client.ts`):
+
+   ```ts
+   import { nativeHealth, nativeImport, nativePatterns } from "@/lib/native-client";
+
+   const health = await nativeHealth();
+   const result = await nativeImport({
+     category: "citation",
+     patternId: "arxiv.id",
+     text: "arXiv:2401.01234",
+   });
+   const patterns = await nativePatterns();
+   ```
+
+   The extension's background worker routes two MSG types over this
+   path (`NATIVE_HEALTH`, `NATIVE_IMPORT`). To trigger from the
+   extension UI, send a `chrome.runtime.sendMessage({ type: "NATIVE_IMPORT", payload: {...} })`.
+
 The host speaks the same JSON dialect as the bridge. In production we
 typically call the bridge directly (option 1) and use the native host only
-when we want the message to *originate* from the extension itself.
+when we want the message to *originate* from the extension itself, or when
+the bridge HTTP server isn't running.
+
+## 3. Programmatic via the extension's background handler
+
+If the extension is already running, a page's content script (or the
+popup) can call any of the four import paths over Chrome's internal
+messaging:
+
+| MSG type        | Transport          | Payload                          |
+|-----------------|--------------------|----------------------------------|
+| `IMPORT_BRIDGE` | HTTP to :3002      | `{ category, patternId, text, source? }` |
+| `NATIVE_HEALTH` | stdio via host     | (none)                           |
+| `NATIVE_IMPORT` | stdio via host     | `{ category, patternId, text, source? }` |
+
+Both succeed or fail silently — the user-visible result is best-effort.
+The native path works even when the bridge server is down.
 
 ## Hermes / Claude / generic CLI
 
