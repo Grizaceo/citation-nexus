@@ -1,25 +1,27 @@
 /* Citation Nexus — Content highlight styles
  * Two layers:
- *   - .nx-sentence: subtle block around any sentence containing ≥1 match
+ *   - .nx-sentence: clearly visible background around any sentence
+ *     containing ≥1 match. The user should be able to glance at a
+ *     Wikipedia paragraph and immediately see which sentences are
+ *     "relevant" — that's the diagonal-reading UX.
  *   - .nx-highlight.*: vibrant per-category color on the matched term
- *
- * Color palette is high-contrast against both light and dark page
- * backgrounds. Tooltip on the keyword uses ::after.
+ *     itself, with a tooltip on hover.
  */
 
-/* ── SENTENCE-LEVEL: subtle but unmistakable ───────────────────── */
+/* ── SENTENCE-LEVEL: clearly visible block ─────────────────── */
 .nx-sentence {
   background: linear-gradient(
     90deg,
-    rgba(255, 213, 79, 0.22) 0%,
-    rgba(255, 213, 79, 0.10) 100%
+    rgba(255, 213, 79, 0.45) 0%,
+    rgba(255, 213, 79, 0.18) 100%
   );
-  border-left: 3px solid #f9a825;
-  border-radius: 2px;
-  padding: 0 4px 0 2px;
-  margin: 0 0 0 -2px;
-  box-shadow: inset 0 0 0 1px rgba(249, 168, 37, 0.10);
-  /* keep the sentence on its own baseline */
+  border-left: 4px solid #f57f17;
+  border-radius: 3px;
+  padding: 1px 6px 1px 4px;
+  margin: 0 0 0 -4px;
+  box-shadow:
+    inset 0 0 0 1px rgba(245, 127, 23, 0.25),
+    0 1px 0 rgba(245, 127, 23, 0.08);
   display: inline;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
@@ -28,8 +30,8 @@
 .nx-sentence:hover {
   background: linear-gradient(
     90deg,
-    rgba(255, 213, 79, 0.35) 0%,
-    rgba(255, 213, 79, 0.18) 100%
+    rgba(255, 213, 79, 0.65) 0%,
+    rgba(255, 213, 79, 0.30) 100%
   );
 }
 
@@ -37,12 +39,15 @@
 .nx-highlight {
   position: relative;
   display: inline;
-  border-radius: 2px;
-  padding: 1px 3px;
-  margin: 0 -1px;
-  font-weight: 600;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin: 0 -2px;
+  font-weight: 700;
   cursor: help;
-  box-shadow: 0 0 0 1px currentColor;
+  box-shadow:
+    0 0 0 1px currentColor,
+    0 1px 2px rgba(0, 0, 0, 0.15);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
@@ -76,53 +81,90 @@
   opacity: 1;
 }
 
-/* ── Citation (academic, code) — dodger blue ─────────────────── */
+/* ── Citation (academic, code) — dodger blue ───────────────── */
 .nx-highlight-citation {
   background: #4682ff;
   color: #ffffff;
-  box-shadow: 0 0 0 1px #2d5fbf;
+  box-shadow:
+    0 0 0 1px #2d5fbf,
+    0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 /* ── Math — vivid orange ────────────────────────────────────── */
 .nx-highlight-math {
   background: #ff8c00;
-  color: #1a1a1a;
-  box-shadow: 0 0 0 1px #cc6f00;
+  color: #ffffff;
+  box-shadow:
+    0 0 0 1px #cc6f00,
+    0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 /* ── Physics — deep sky blue ────────────────────────────────── */
 .nx-highlight-physics {
   background: #1e90ff;
   color: #ffffff;
-  box-shadow: 0 0 0 1px #0066cc;
+  box-shadow:
+    0 0 0 1px #0066cc,
+    0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 /* ── Biology — emerald green ────────────────────────────────── */
 .nx-highlight-biology {
   background: #00c853;
   color: #ffffff;
-  box-shadow: 0 0 0 1px #00963e;
+  box-shadow:
+    0 0 0 1px #00963e,
+    0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 /* ── CS / ML — magenta ──────────────────────────────────────── */
 .nx-highlight-cs {
   background: #d336d3;
   color: #ffffff;
-  box-shadow: 0 0 0 1px #a020a0;
+  box-shadow:
+    0 0 0 1px #a020a0,
+    0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 /* ── Chemistry — saturated gold ─────────────────────────────── */
 .nx-highlight-chemistry {
   background: #ffb300;
   color: #1a1a1a;
-  box-shadow: 0 0 0 1px #cc8f00;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 0 0 1px #cc8f00,
+    0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 /* ── Default / catch-all ───────────────────────────────────── */
 .nx-highlight-default {
   background: #9e9e9e;
   color: #ffffff;
-  box-shadow: 0 0 0 1px #757575;
+  box-shadow:
+    0 0 0 1px #757575,
+    0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* ── Dark mode ──────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  .nx-sentence {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 213, 79, 0.30) 0%,
+      rgba(255, 213, 79, 0.10) 100%
+    );
+    border-left-color: #ffb300;
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 179, 0, 0.30),
+      0 1px 0 rgba(255, 179, 0, 0.10);
+  }
+  .nx-sentence:hover {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 213, 79, 0.45) 0%,
+      rgba(255, 213, 79, 0.20) 100%
+    );
+  }
 }
 
 /* Respect users who prefer reduced motion */
