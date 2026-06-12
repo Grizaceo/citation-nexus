@@ -88,6 +88,7 @@ messaging:
 | `IMPORT_BRIDGE` | HTTP to :3002      | `{ category, patternId, text, source? }` |
 | `NATIVE_HEALTH` | stdio via host     | (none)                           |
 | `NATIVE_IMPORT` | stdio via host     | `{ category, patternId, text, source? }` |
+| `DOWNLOAD_PAPER` | stdio via host    | `{ url, category, filename, format }` (a `DownloadInfo` from the downloader module) |
 
 Both succeed or fail silently — the user-visible result is best-effort.
 The native path works even when the bridge server is down.

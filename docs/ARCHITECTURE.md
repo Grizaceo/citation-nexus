@@ -83,6 +83,11 @@ exists to expose the same data over a CLI-friendly JSON API.
 - Small Python binary that Chrome spawns on `sendNativeMessage`.
 - Speaks Chrome's length-prefixed JSON framing.
 - Forwards `action: import|patterns|health` to the bridge.
+- The `download` action is handled IN the host (no bridge hop):
+  fetches the URL, writes the response body to the local vault
+  at `papers/<category>/<filename>.<format>`. Returns the saved
+  path + size + content-type. Idempotent: skips an existing
+  file > 1KB so re-runs don't re-download.
 
 ### Native client (`src/lib/native-client.ts`)
 
@@ -110,3 +115,32 @@ exists to expose the same data over a CLI-friendly JSON API.
 - Host permissions: `127.0.0.1:3002/*` and `localhost:3002/*` (the local
   bridge only). All other API hosts were dropped — the extension never
   makes remote HTTP calls.
+
+## Local file download
+
+Two paths converge on the same vault layout:
+
+```
+~/.local/share/nexus/vault/
+├── imports/                          # metadata markdown (existing)
+│   └── citation/2401.01234.md
+└── papers/                           # actual downloaded files (new)
+    ├── citation/2401.01234.pdf
+    └── doi/10.1038_nature12373.pdf
+```
+
+- **Via the popup:** the [Save] button on a finding sends
+  `DOWNLOAD_PAPER` to the background, which calls the native
+  host's `download` action. Only high-confidence findings
+  (`source !== 'text'`, i.e. meta tag / JSON-LD / canonical
+  link) get the [Save] button — that's the "solo en las
+  certificadas" rule. Text-body matches in random prose
+  never trigger a save.
+- **Via the bridge:** `POST /download` with a `{ url, category,
+  filename, format }` body. Same vault, same write path.
+  `POST /batch-download` for many in one call.
+
+The downloader module (`src/patterns/downloader.ts`) is the
+single source of truth for which patterns are downloadable
+and what their vault filenames look like. Both paths consume
+its `getDownloadInfo(finding)` output.
