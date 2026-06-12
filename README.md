@@ -44,7 +44,7 @@ popup → category chips, raw findings list, rescan/options buttons.
 See [`docs/PATTERNS.md`](docs/PATTERNS.md) for the catalog and the
 recipe to add a new pattern or set.
 
-## Agentic — three ways to drive it
+## Agentic — four ways to drive it
 
 1. **HTTP bridge** (recommended, no Chrome required)
 
