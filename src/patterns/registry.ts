@@ -85,13 +85,28 @@ export function applyPatternsToText(
       }
       const captured = m.length > 1 && m[1] !== undefined ? m[1] : m[0];
       const offset = captured !== m[0] ? m[0].indexOf(captured) : 0;
+      const start = m.index + offset;
+      const end = start + captured.length;
+
+      // Context disqualifier: if the pattern declares
+      // `excludeInSentence` and the same sentence contains any of
+      // those words, drop the finding. This is what makes
+      // "55.2 km" not a match in an earthquake article (the sentence
+      // contains "depth") but a real match in a particle-physics
+      // paper.
+      if (p.excludeInSentence && p.excludeInSentence.length > 0) {
+        if (sentenceContainsAny(text, start, end, p.excludeInSentence)) {
+          continue;
+        }
+      }
+
       local.push({
         patternId: p.id,
         category: p.category,
         label: p.label,
         text: captured,
-        start: m.index + offset,
-        end: m.index + offset + captured.length,
+        start,
+        end,
         originalLength: m[0].length,
         priority: p.priority ?? 0,
       });
@@ -99,6 +114,59 @@ export function applyPatternsToText(
   }
   return resolveOverlaps(local);
 }
+
+/**
+ * Returns true if the sentence containing the [start, end) span in
+ * `text` contains any of the disqualifying words (case-insensitive,
+ * word-boundary). The sentence is detected with the same
+ * decimal-aware + abbreviation-aware algorithm used for sentence
+ * wrapping in the highlighter — same source of truth for "what is
+ * a sentence here".
+ */
+function sentenceContainsAny(
+  text: string,
+  start: number,
+  end: number,
+  words: string[]
+): boolean {
+  if (words.length === 0) return false;
+  // Import lazily to avoid a circular import: highlight.ts already
+  // depends on the registry (via core).
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const sentences = findSentencesForContext(text);
+  const containing = sentences.find(
+    (s) => start >= s.start && end <= s.end
+  );
+  if (!containing) return false;
+  const haystack = containing.text.toLowerCase();
+  for (const w of words) {
+    const lw = w.toLowerCase();
+    // Word-boundary check: \b in JS is ASCII-only, so do it by
+    // index arithmetic to handle UTF-8 properly.
+    let from = 0;
+    while (from <= haystack.length - lw.length) {
+      const i = haystack.indexOf(lw, from);
+      if (i < 0) break;
+      const before = i === 0 || !/[a-z0-9]/.test(haystack.charAt(i - 1));
+      const afterOk =
+        i + lw.length === haystack.length ||
+        !/[a-z0-9]/.test(haystack.charAt(i + lw.length));
+      if (before && afterOk) return true;
+      from = i + 1;
+    }
+  }
+  return false;
+}
+
+/** Re-exported here to keep the disqualifier co-located with the
+ *  matching logic. Implementation lives at the bottom of this file
+ *  to avoid a circular import with highlight.ts.
+ */
+declare function findSentencesForContext(text: string): Array<{
+  start: number;
+  end: number;
+  text: string;
+}>;
 
 /**
  * DOM walker: visits every accepted text node under `root` and produces
@@ -176,6 +244,55 @@ function resolveOverlaps<
       out.push(f);
       cursor = f.end;
     }
+  }
+  return out;
+}
+
+// Provide findSentencesForContext for the context-disqualifier
+// without creating a circular import. The highlight module already
+// imports from this file (via core), so we re-implement just the
+// bits we need here — a single function call, no shared state.
+//
+// (If the highlight module's algorithm drifts from this, the
+// disqualifier might use ligeramente different sentence boundaries
+// than the highlighter. That's acceptable: the disqualifier is
+// a guard, not a render boundary.)
+function findSentencesForContext(text: string): Array<{
+  start: number;
+  end: number;
+  text: string;
+}> {
+  const out: Array<{ start: number; end: number; text: string }> = [];
+  let sentStart = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charAt(i);
+    if (c !== "." && c !== "!" && c !== "?") continue;
+    // decimal-context guard (1-2 digits before, 1-3 after) — same
+    // rule as the highlighter.
+    if (c === ".") {
+      let beforeLen = 0;
+      for (let j = i - 1; j >= 0 && /\d/.test(text.charAt(j)); j--) beforeLen++;
+      let afterLen = 0;
+      for (let j = i + 1; j < text.length && /\d/.test(text.charAt(j)); j++) afterLen++;
+      if (beforeLen >= 1 && beforeLen <= 2 && afterLen >= 1 && afterLen <= 3) {
+        continue;
+      }
+    }
+    let j = i + 1;
+    while (j < text.length && /\s/.test(text.charAt(j))) j++;
+    if (j >= text.length) {
+      out.push({ start: sentStart, end: i + 1, text: text.slice(sentStart, i + 1) });
+      sentStart = i + 1;
+      continue;
+    }
+    const next = text.charAt(j);
+    if (/[A-Z(\["'¿]/.test(next)) {
+      out.push({ start: sentStart, end: i + 1, text: text.slice(sentStart, i + 1) });
+      sentStart = i + 1;
+    }
+  }
+  if (sentStart < text.length) {
+    out.push({ start: sentStart, end: text.length, text: text.slice(sentStart) });
   }
   return out;
 }

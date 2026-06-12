@@ -26,6 +26,23 @@ export interface PatternDef {
   priority?: number;
   /** Optional tooltip text or metadata accessor */
   tooltip?: string;
+  /**
+   * Context disqualifiers. If any of these conditions match, the
+   * finding is dropped even when the regex matches. Case-insensitive
+   * word-boundary match.
+   *
+   *   - `excludeInSentence`: any of these words in the SAME sentence
+   *     disqualifies. Useful for patterns whose tokens have a
+   *     different meaning in scientific vs. everyday prose (e.g.
+   *     "55.2 km" in an earthquake article is a depth, not a physics
+   *     unit; the sentence mentions "depth" / "magnitude" / etc.).
+   *
+   * Implementation note: the disqualifier is checked on the text
+   * *containing* the match — not on the matched substring itself.
+   * For DOM scanning, that's the text node's value; for CLI batch
+   * scanning, it's the input item text.
+   */
+  excludeInSentence?: string[];
 }
 
 export interface CompiledPattern extends Omit<PatternDef, "regex" | "flags"> {

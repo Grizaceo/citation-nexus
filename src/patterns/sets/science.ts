@@ -72,6 +72,35 @@ export const scienceSet: PatternSet = {
       regex:
         "\\b\\d+(?:\\.\\d+)?\\s*(?:GeV|MeV|keV|TeV|fm|pm|nm|\\u00b5m|kg|eV|ps|ns|us|ms)\\b",
       tooltip: "Quantity with SI / particle-physics unit",
+      // Context disqualifier: if the SENTENCE containing the unit
+      // mentions any of these words, drop the match. This is the
+      // generic "read before/after to decide" check the user asked
+      // for: a "55.2 km" in an article that also mentions "depth"
+      // or "magnitude" is a depth, not a particle-physics quantity.
+      excludeInSentence: [
+        "depth",
+        "magnitude",
+        "epicenter",
+        "epicentre",
+        "altitude",
+        "elevation",
+        "tsunami",
+        "aftershock",
+        "earthquake",
+        "fault",
+        "tectonic",
+        "seismolog",
+        "geolog",
+        "oceanic",
+        "kilomet",
+        "kilometer",
+        "miles",
+        "feet",
+        "off the coast",
+        "from the",
+        "located",
+        "coast",
+      ],
     },
 
     // ── CHEMISTRY (registered before bio.gene so chem wins on overlaps) ─
