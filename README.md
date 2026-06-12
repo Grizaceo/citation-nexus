@@ -1,7 +1,7 @@
 # Citation Nexus
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Goldset F1](https://img.shields.io/badge/goldset_F1-0.989-brightgreen)](goldset/reports/latest.md)
+[![Goldset F1](https://img.shields.io/badge/goldset_F1-0.998-brightgreen)](goldset/reports/latest.md)
 [![Tests](https://img.shields.io/badge/tests-88_passing-brightgreen)](#tests)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](src)
 

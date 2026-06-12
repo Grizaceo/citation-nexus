@@ -4,7 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Citation Nexus — demo</title>
+    <link rel="stylesheet" href="../src/assets/content.css" />
     <style>
+      /* Demo-only page styles. The actual highlight visuals come from
+       * src/assets/content.css, the same file the extension injects via
+       * manifest.json. Keep this block minimal: page chrome only. */
       :root {
         --bg: #1a1a1a;
         --fg: #e0e0e0;
@@ -20,36 +24,6 @@
         color: var(--fg);
       }
       h1 { font-weight: 600; font-size: 1.4rem; }
-      .nx-highlight {
-        position: relative;
-        border-radius: 2px;
-        padding: 0 1px;
-        cursor: help;
-      }
-      .nx-highlight::after {
-        content: attr(data-nx-tip);
-        position: absolute;
-        bottom: 100%;
-        left: 50%;
-        transform: translateX(-50%) translateY(-4px);
-        background: #111;
-        color: #f0f0f0;
-        border: 1px solid #333;
-        font-size: 11px;
-        white-space: nowrap;
-        padding: 4px 7px;
-        border-radius: 4px;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 100ms ease 50ms;
-      }
-      .nx-highlight:hover::after { opacity: 1; }
-      .nx-highlight-citation { background: rgba(70, 130, 255, 0.18); border-bottom: 1px solid rgba(70, 130, 255, 0.65); }
-      .nx-highlight-math { background: rgba(255, 140, 0, 0.20); border-bottom: 2px solid #ff8c00; }
-      .nx-highlight-physics { background: rgba(30, 144, 255, 0.15); border-bottom: 1px solid #1e90ff; }
-      .nx-highlight-biology { background: rgba(0, 200, 80, 0.15); border-bottom: 1px solid #00c850; }
-      .nx-highlight-cs { background: rgba(200, 100, 240, 0.15); border-bottom: 1px dashed #c864f0; }
-      .nx-highlight-chemistry { background: rgba(255, 200, 50, 0.20); border-bottom: 1px solid #d4a017; }
     </style>
   </head>
   <body>

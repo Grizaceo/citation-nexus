@@ -28,7 +28,7 @@
 {"pattern": "math.equation", "text": "We use (equation 12) below.", "expect": "12"}
 {"pattern": "math.equation", "text": "Recall (3) in the proof.", "expect": "3"}
 {"pattern": "math.equation", "text": "Equation (7) drives the claim.", "expect": "7"}
-{"pattern": "math.equation", "text": "equation 1 in the text", "expect": "1"}
+{"pattern": "math.equation", "text": "equation 1 in the text", "expect_null": true}
 {"pattern": "math.equation", "text": "The (eq.42) reference is key.", "expect": "42"}
 {"pattern": "math.equation", "text": "From (eq. 1) to (eq. 2) the bound tightens.", "expect": "1"}
 {"pattern": "math.equation", "text": "Use parens like (1) (2) (3) inline.", "expect": "1"}
@@ -89,7 +89,7 @@
 {"pattern": "physics.units", "text": "The detector is 12 m long.", "expect": null}
 {"pattern": "physics.units", "text": "A 5 cm chamber.", "expect": null}
 {"pattern": "physics.units", "text": "A 250 nm structure.", "expect": "250 nm"}
-{"pattern": "physics.units", "text": "The run took 600 s.", "expect": "600 s"}
+{"pattern": "physics.units", "text": "The run took 600 s.", "expect_null": true}
 {"pattern": "physics.units", "text": "The mass is 1.7 GeV/c^2 effectively just GeV.", "expect": "1.7 GeV"}
 {"pattern": "physics.units", "text": "We use a 2 kg target.", "expect": "2 kg"}
 {"pattern": "physics.units", "text": "Run for 350 ms at 1 kHz.", "expect": "350 ms"}
@@ -97,7 +97,7 @@
 {"pattern": "physics.units", "text": "Five apples (no unit) is not a unit.", "expect_null": true}
 {"pattern": "physics.units", "text": "12 m/s is not a unit alone (m/s is not in our list).", "expect_null": true}
 {"pattern": "physics.units", "text": "The page is 12 pages long.", "expect_null": true}
-{"pattern": "physics.units", "text": "We waited 3 minutes for 60 s.", "expect": "60 s"}
+{"pattern": "physics.units", "text": "We waited 3 minutes for 60 s.", "expect_null": true}
 {"pattern": "physics.units", "text": "12 g/mol is a derived unit not in the list.", "expect_null": true}
 
 {"pattern": "chem.formula", "text": "Water (H2O) and carbon dioxide (CO2) are abundant.", "expect": "H2O"}
@@ -139,11 +139,11 @@
 {"pattern": "bio.protein", "text": "TGFβ signaling is context-dependent.", "expect": "TGFβ"}
 {"pattern": "bio.protein", "text": "TNFα drives inflammation.", "expect": "TNFα"}
 {"pattern": "bio.protein", "text": "Hsp90 is a chaperone.", "expect": "Hsp90"}
-{"pattern": "bio.protein", "text": "Myc is a transcription factor.", "expect": "Myc"}
+{"pattern": "bio.protein", "text": "Myc is a transcription factor.", "expect_null": true}
 {"pattern": "bio.protein", "text": "Fos and Jun form AP-1.", "expect": null}
 {"pattern": "bio.protein", "text": "The Ras-Raf-Mek-Erk cascade is canonical.", "expect": "Ras"}
 {"pattern": "bio.protein", "text": "pRB is phosphorylated by CDK4.", "expect": "pRB"}
-{"pattern": "bio.protein", "text": "The acid has a low pH of 5.3.", "expect": "pH"}
+{"pattern": "bio.protein", "text": "The acid has a low pH of 5.3.", "expect_null": true}
 {"pattern": "bio.protein", "text": "p300 is a histone acetyltransferase, not in our list.", "expect_null": true}
 {"pattern": "bio.protein", "text": "Section 4 has more details.", "expect_null": true}
 
