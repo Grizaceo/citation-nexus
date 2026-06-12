@@ -48,12 +48,23 @@ export default defineContentScript({
         .get(PAUSED_KEY)
         .then((v: Record<string, unknown>) => {
           isPaused = v[PAUSED_KEY] === true;
+          if (typeof console !== "undefined") {
+            console.debug(
+              `[citation-nexus] pause init: isPaused=${isPaused} (from storage)`
+            );
+          }
         });
       chrome.storage.onChanged.addListener(
         (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
           if (area !== "local") return;
           if (!(PAUSED_KEY in changes)) return;
-          isPaused = changes[PAUSED_KEY].newValue === true;
+          const newVal = changes[PAUSED_KEY].newValue === true;
+          isPaused = newVal;
+          if (typeof console !== "undefined") {
+            console.debug(
+              `[citation-nexus] pause change: isPaused=${newVal} (from storage.onChanged)`
+            );
+          }
           if (isPaused) {
             // Clear existing highlights so the page looks "off".
             clearHighlights();
@@ -101,8 +112,12 @@ export default defineContentScript({
       }
 
       function runScan() {
-        // Skip the whole cycle when paused.
+        // Skip the whole cycle when paused. Logged for debugging
+        // the dogfooding "pause button doesn't actually pause" case.
         if (isPaused) {
+          if (typeof console !== "undefined") {
+            console.debug("[citation-nexus] runScan skipped (paused)");
+          }
           clearHighlights();
           return;
         }
