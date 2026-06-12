@@ -20,6 +20,15 @@ export const citationsSet: PatternSet = {
       regex: "arXiv:\\s*(\\d{4}\\.\\d{4,5}(?:v\\d+)?)",
       flags: "gi",
       tooltip: "arXiv preprint",
+      // Falsifiers: drop matches that are clearly not real
+      // citations. Inherited from the dogfooding pass.
+      falsifiers: [
+        // arXiv IDs inside <code> or <pre> are usually pasted
+        // example payloads, configuration snippets, or test
+        // fixtures, not a citation of an actual paper.
+        { parent: { tag: "CODE" } },
+        { parent: { tag: "PRE" } },
+      ],
     },
     {
       id: "arxiv.abs",
@@ -36,6 +45,13 @@ export const citationsSet: PatternSet = {
       regex: "\\b10\\.\\d{4,9}/[-._;()/:A-Z0-9]+\\b",
       flags: "gi",
       tooltip: "Digital Object Identifier",
+      falsifiers: [
+        // DOI in a list (followed by `, 10.` or `; 10.`) — the
+        // comma/semicolon + space + DOI prefix pattern. The FIRST
+        // DOI in a comma-separated list is dropped; subsequent
+        // DOIs survive (their preceding text is not a DOI).
+        { after: /^[;,]\s*10\./ },
+      ],
     },
     {
       id: "doi.url",

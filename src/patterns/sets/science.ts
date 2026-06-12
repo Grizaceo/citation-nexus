@@ -130,6 +130,17 @@ export const scienceSet: PatternSet = {
       // priority: 0 (default) so explicit patterns win on overlap.
       regex: "\\b[A-Z][A-Z0-9]{1,5}\\d[A-Z0-9]?\\b",
       tooltip: "HGNC-style gene symbol (e.g. TP53, BRCA1, ABCA1)",
+      // Falsifiers: drop matches that are clearly not real
+      // gene mentions.
+      falsifiers: [
+        // Gene-like tokens inside headings (e.g. "<h1>TP53
+        // mutations in cancer</h1>") are navigational labels,
+        // not citations of a paper about that gene. Drop them.
+        { parent: { tag: "H1" } },
+        { parent: { tag: "H2" } },
+        { parent: { tag: "H3" } },
+        { parent: { tag: "TITLE" } },
+      ],
     },
     {
       id: "bio.protein",
