@@ -61,8 +61,12 @@ const ABBREVIATIONS = new Set([
 
 /** Returns true if `text[dotPos]` (a `.`) is part of an abbreviation
  *  like "Dr.", "Fig.", "et al.", or "e.g." — i.e. NOT a sentence
- *  terminator. The single-letter case catches "X." followed by
- *  another letter (the second letter of a "X.Y." pair). */
+ *  terminator. The single-letter case distinguishes:
+ *    - "J. K. Rowling" / "U. S. A."  (next char is uppercase) → abbreviation
+ *    - "e.g." / "i.e."                 (next char is lowercase, but the
+ *                                       single letter is in the small allow-list)
+ *  This deliberately does NOT flag the pronoun "I" in "It works."
+ *  (next char "t" is lowercase but "I" is not in the allow-list). */
 function isAbbreviation(text: string, dotPos: number): boolean {
   // Find the start of the word ending at this dot.
   let wordStart = dotPos - 1;
@@ -72,12 +76,18 @@ function isAbbreviation(text: string, dotPos: number): boolean {
   const word = text.substring(wordStart, dotPos);
   if (ABBREVIATIONS.has(word)) return true;
   // Single-letter word: "J." in "J. K. Rowling" or "e" in "e.g.".
-  if (word.length === 1) {
+  if (word.length === 1 && /[A-Za-z]/.test(word)) {
     const beforeWord = wordStart > 0 ? text.charAt(wordStart - 1) : " ";
     if (!/[A-Za-z]/.test(beforeWord)) {
       let j = dotPos + 1;
       while (j < text.length && /\s/.test(text.charAt(j))) j++;
-      if (j < text.length && /[A-Za-z]/.test(text.charAt(j))) return true;
+      if (j < text.length) {
+        const next = text.charAt(j);
+        // Uppercase next: classic initial pattern ("J. K.").
+        if (/[A-Z]/.test(next)) return true;
+        // Lowercase next: only allow "e" or "i" (the "e.g.", "i.e." case).
+        if (/[a-z]/.test(next) && (word === "e" || word === "i")) return true;
+      }
     }
   }
   return false;
