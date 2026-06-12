@@ -114,11 +114,19 @@ export function applyPatterns(root: Node, registry: PatternRegistry): Finding[] 
   const walker = doc.createTreeWalker(root, 0x4 /* SHOW_TEXT */, {
     acceptNode(node) {
       const parent = node.parentElement;
-      if (!parent) return 2 /* FILTER_REJECT */;
+      if (!parent) return 2;
       const tag = parent.tagName;
       if (tag === "SCRIPT" || tag === "STYLE" || tag === "NOSCRIPT")
         return 2;
-      if (parent.classList.contains("nx-highlight")) return 2;
+      // Skip text nodes already wrapped in our highlights or sentence
+      // markers. Defense-in-depth against the re-scan feedback loop —
+      // the content script also gates via an `isRendering` flag, but
+      // if anything slips through we still don't double-wrap.
+      if (
+        parent.classList.contains("nx-highlight") ||
+        parent.classList.contains("nx-sentence")
+      )
+        return 2;
       if (!node.nodeValue || node.nodeValue.trim().length === 0) return 2;
       return 1 /* FILTER_ACCEPT */;
     },
