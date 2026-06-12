@@ -158,25 +158,22 @@ function sentenceContainsAny(
   return false;
 }
 
-/** Re-exported here to keep the disqualifier co-located with the
- *  matching logic. Implementation lives at the bottom of this file
- *  to avoid a circular import with highlight.ts.
- */
-declare function findSentencesForContext(text: string): Array<{
-  start: number;
-  end: number;
-  text: string;
-}>;
+// findSentencesForContext is defined at the bottom of this file
+// (after the function above references it). TypeScript hoists
+// function declarations, so the reference below resolves at runtime
+// even though the definition appears later in the file. We use
+// the regular function declaration (not `declare`) so that the
+// definition at the bottom isn't seen as a conflicting overload.
 
 /**
- * DOM walker: visits every accepted text node under `root` and produces
- * Findings that carry a reference to their source text node (used by the
- * highlighter to wrap the right span in the page).
+ * Returns true if the sentence containing the [start, end) span in
+ * `text` contains any of the disqualifying words (case-insensitive,
+ * word-boundary). The sentence is detected with the same
+ * decimal-aware + abbreviation-aware algorithm used for sentence
+ * wrapping in the highlighter — same source of truth for "what is
+ * a sentence here".
  */
-export function applyPatterns(root: Node, registry: PatternRegistry): Finding[] {
-  const findings: Finding[] = [];
-  const doc = root.ownerDocument ?? (globalThis as { document?: Document }).document;
-  if (!doc) {
+function sentenceContainsAny(
     throw new Error("applyPatterns: no document available");
   }
   const walker = doc.createTreeWalker(root, 0x4 /* SHOW_TEXT */, {
