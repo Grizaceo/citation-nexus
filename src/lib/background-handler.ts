@@ -21,6 +21,8 @@ export const MSG = {
   NATIVE_HEALTH: "NATIVE_HEALTH",
   NATIVE_IMPORT: "NATIVE_IMPORT",
   DOWNLOAD_PAPER: "DOWNLOAD_PAPER",
+  LOAD_EMBEDDING_MODEL: "LOAD_EMBEDDING_MODEL",
+  EMBED_FIND_SIMILAR: "EMBED_FIND_SIMILAR",
 } as const;
 
 export type MessageType = (typeof MSG)[keyof typeof MSG];
@@ -33,9 +35,18 @@ export interface BridgeDeps {
   executeScript: (tabId: number, files: string[]) => Promise<unknown>;
   sendNativeMessage: (
     application: string,
-    message: any,
+    message: unknown,
     callback: (response: unknown) => void
   ) => unknown;
+  /**
+   * Async: load the named embedding model. Returns an embedder
+   * function or throws. The dispatcher wraps in try/catch so the
+   * popup sees a { ok, error } shape. */
+  loadEmbeddingModel?: (modelId: string) => Promise<unknown>;
+  /**
+   * Async: embed a single text using the named model. Throws
+   * if the model hasn't been loaded. */
+  embedText?: (modelId: string, text: string) => Promise<Float32Array>;
 }
 
 export interface IncomingMessage {
@@ -159,6 +170,68 @@ export function handleMessage(
           );
         } catch (e) {
           resolve({ ok: false, error: String(e) });
+        }
+      });
+      return { sync: false, reply: promise };
+    }
+    case MSG.LOAD_EMBEDDING_MODEL: {
+      // Async: dynamic-imports @huggingface/transformers, downloads
+      // the ONNX model from the HF CDN, caches in memory. The
+      // popup calls this when the user picks a model from the
+      // embeddings dropdown. Returns { ok, ms, error? }.
+      const promise = new Promise<unknown>(async (resolve) => {
+        if (!deps.loadEmbeddingModel) {
+          resolve({ ok: false, error: "loadEmbeddingModel not wired" });
+          return;
+        }
+        try {
+          await deps.loadEmbeddingModel(msg.payload?.modelId ?? "multilingual");
+          resolve({ ok: true, modelId: msg.payload?.modelId });
+        } catch (e) {
+          resolve({
+            ok: false,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+      });
+      return { sync: false, reply: promise };
+    }
+    case MSG.EMBED_FIND_SIMILAR: {
+      // Async: embed the query text, then return the top-k matches
+      // from the pre-computed keyword index. The actual index
+      // lookup is the caller's job (popup) — we just embed here.
+      // Wait, the lookup is in the popup; we want the embed + the
+      // lookup in the same place so the index is cached server-side
+      // (in the service worker). For v1 the lookup is local to
+      // the popup; if the user reloads the popup the index reloads
+      // (it's only 600KB so this is fine).
+      const promise = new Promise<unknown>(async (resolve) => {
+        if (!deps.embedText) {
+          resolve({ ok: false, error: "embedText not wired" });
+          return;
+        }
+        try {
+          const text = (msg.payload?.text ?? "").trim();
+          if (!text) {
+            resolve({ ok: false, error: "empty text" });
+            return;
+          }
+          const modelId = msg.payload?.modelId ?? "multilingual";
+          const vector = await deps.embedText(modelId, text);
+          resolve({
+            ok: true,
+            data: {
+              modelId,
+              text,
+              vectorLength: vector.length,
+              vector: Array.from(vector), // serialize for the message
+            },
+          });
+        } catch (e) {
+          resolve({
+            ok: false,
+            error: e instanceof Error ? e.message : String(e),
+          });
         }
       });
       return { sync: false, reply: promise };
