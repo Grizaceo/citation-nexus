@@ -57,17 +57,12 @@ export function loadModel(modelId: ModelId): Promise<Embedder> {
   const promise = (async (): Promise<Embedder> => {
     // Dynamic import so the @huggingface/transformers bundle
     // (which pulls in onnxruntime-web and ~17MB of WASM data) is
-    // only fetched when the user actually picks a model.
-    //
-    // /* @vite-ignore */ tells the bundler NOT to follow this
-    // import — otherwise Vite inlines the ONNX runtime WASM as
-    // a base64 data URL, ballooning background.js to ~62 MB.
-    // The runtime module is fetched from the HF CDN on first
-    // load (or from the browser cache after that). Webpack/Rollup
-    // also recognize the @vite-ignore pragma.
-    const transformers = await import(
-      /* @vite-ignore */ "@huggingface/transformers"
-    );
+    // only fetched when the user actually picks a model. The
+    // ONNX runtime WASM is extracted from the library source by
+    // the wxt-plugins/transformers-wasm.ts Vite plugin and
+    // emitted as a separate asset under .output/chrome-mv3/
+    // assets/ort-wasm-N.wasm, so it doesn't bloat background.js.
+    const transformers = await import("@huggingface/transformers");
     const pipeline = transformers.pipeline;
     const env = transformers.env;
 

@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { defineConfig } from "wxt";
+import { transformersWasmPlugin } from "./wxt-plugins/transformers-wasm";
 
 export default defineConfig({
   srcDir: "src",
@@ -53,12 +54,15 @@ export default defineConfig({
   // assets (WASM, JSON > 4KB) as base64 data URLs. The
   // @huggingface/transformers library ships a 17 MB ONNX
   // runtime WASM that the bundler tries to inline by default,
-  // turning the background.js into a 62 MB file. Setting the
-  // limit to 0 forces all assets to be extracted as separate
-  // files under .output/chrome-mv3/assets/, which the library
-  // then fetches via fetch() at runtime (or via the HF CDN
-  // with the host_permissions above).
+  // turning the background.js into a 62 MB file. The
+  // transformersWasmPlugin below extracts the WASM as a
+  // separate asset and rewrites the data URL in the library
+  // source to chrome.runtime.getURL(). Setting the
+  // inlineLimit to 0 forces all assets to be extracted as
+  // separate files under .output/chrome-mv3/assets/, which
+  // the library then fetches at runtime.
   vite: () => ({
+    plugins: [transformersWasmPlugin()],
     build: {
       assetsInlineLimit: 0,
     },
