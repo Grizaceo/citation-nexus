@@ -26,6 +26,26 @@
 
       <section class="nx-categories" id="nx-categories"></section>
 
+      <section class="nx-embeddings" id="nx-embeddings">
+        <header class="nx-embeddings-header">
+          <span class="nx-embeddings-label">Embeddings</span>
+          <select class="nx-embeddings-select" id="nx-embeddings-model" title="Pick an embedding model. Multilingual downloads ~25 MB on first use.">
+            <option value="off">Off</option>
+            <option value="multilingual">Multilingual (~25 MB)</option>
+          </select>
+          <span class="nx-embeddings-status" id="nx-embeddings-status" data-status="off">off</span>
+        </header>
+        <div class="nx-embeddings-search">
+          <input
+            type="text"
+            id="nx-embeddings-query"
+            placeholder="Search similar keywords (e.g. Llama-3)…"
+            disabled
+          />
+          <div class="nx-embeddings-results" id="nx-embeddings-results"></div>
+        </div>
+      </section>
+
       <section class="nx-actions">
         <label class="nx-toggle-line" title="Highlight citation IDs in the page (off = quiet diagonal reading)">
           <input type="checkbox" id="nx-keywords" />
@@ -38,6 +58,24 @@
       <details class="nx-raw" open>
         <summary>Findings</summary>
         <div class="nx-findings" id="nx-findings"></div>
+      </details>
+
+      <details class="nx-devtools">
+        <summary>Dev Tools</summary>
+        <div class="nx-devtools-body">
+          <p class="nx-devtools-note">
+            Ad-hoc test utility for the embedding feature. The buttons
+            below send the same messages the search box does, so you
+            can verify the model is loaded and the index is reachable
+            without typing a query.
+          </p>
+          <div class="nx-devtools-actions">
+            <button class="nx-btn" id="nx-dev-status">Check model status</button>
+            <button class="nx-btn" id="nx-dev-embed">Probe embed "Llama-3"</button>
+            <button class="nx-btn" id="nx-dev-similar">Probe find-similar "BERT"</button>
+          </div>
+          <pre class="nx-devtools-output" id="nx-devtools-output">// output appears here</pre>
+        </div>
       </details>
     </main>
     <script type="module" src="./main.ts"></script>
