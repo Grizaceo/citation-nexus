@@ -29,6 +29,28 @@ describe("science — math", () => {
       true
     );
   });
+  it("detects eq-prefixed equation reference", () => {
+    expect(findingsOf("math", "We use (eq. 1) and (eq. 2).")).toContain("2");
+  });
+  // Regression: dogfooding on PubMed (2026-06-13) found 6 false
+  // positives on a single results page, all from the
+  // volume(issue) format "159(2):201-209" in journal citations.
+  // The falsifier `before: /\d$/` drops those; real equation
+  // references are preceded by whitespace or punctuation.
+  it("drops (N) when preceded by a digit (volume/issue FP)", () => {
+    // PubMed-style journal citation: the (2) is the issue number
+    // inside the volume, not a math equation.
+    const text = "JAMA Dermatol. 2023;159(2):201-209.";
+    expect(findingsOf("math", text)).not.toContain("2");
+  });
+  it("keeps (N) when preceded by whitespace (real equation ref)", () => {
+    const text = "By Theorem 1 we have f(x) = (1) for all x.";
+    expect(findingsOf("math", text)).toContain("1");
+  });
+  it("keeps (N) when preceded by punctuation (Eq. (1))", () => {
+    const text = "From Eq. (3) the result follows immediately.";
+    expect(findingsOf("math", text)).toContain("3");
+  });
 });
 
 describe("science — physics", () => {

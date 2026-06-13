@@ -33,6 +33,29 @@ export const scienceSet: PatternSet = {
       // Paren-enclosed numbers, optionally prefixed with eq/equation.
       regex: "\\((?:eq\\.?|equation)?\\s*(\\d+)\\)",
       tooltip: "Equation reference",
+      // Volume(issue) format like "JAMA 2023;159(2):201-209" is a
+      // very common false positive: the `(2)` looks like an
+      // equation reference but is the journal's issue number.
+      // Drop any match where the `(` is preceded by a digit (the
+      // volume). Real equation references are usually written
+      // after whitespace, punctuation, or operators:
+      //   "Theorem 1.2 ... where (1) holds"
+      //   "f(x) = (1)"
+      //   "Eq. (1)"
+      //
+      // Implementation note: the match context for the falsifier
+      // is anchored to the CAPTURED group's start (the digits
+      // inside the parens), not the full match (the `(`). So
+      // `before` is computed up to that capture position — which
+      // means the slice ends with the `(`, not a digit. We use
+      // `/\d\($/` to check that the digit-before-paren is there
+      // (i.e. the slice ends with `<digit><open-paren>`).
+      // Discovered via dogfooding on PubMed (2026-06-13): 6 of 6
+      // "math" matches on a single PubMed search result page were
+      // issue-number FPs from the journal citation spans.
+      falsifiers: [
+        { before: /\d\($/ },
+      ],
     },
     {
       id: "math.bigO",
