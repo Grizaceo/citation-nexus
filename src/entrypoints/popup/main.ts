@@ -21,6 +21,7 @@ import {
   type RuntimeBridge,
   type ModelStatus,
 } from "@/lib/embeddings/dev_tools";
+import { listAvailableModels, type ModelId } from "@/lib/embeddings/models";
 import type { Finding } from "@/patterns/core";
 
 const MSG = {
@@ -448,6 +449,32 @@ const EMBED_QUERY = document.getElementById(
 ) as HTMLInputElement | null;
 const EMBED_RESULTS = document.getElementById("nx-embeddings-results");
 
+/** Populate the model <select> from the MODELS registry. Runs once
+ *  on popup init. The "Off" option (the default) is preserved at
+ *  the top; one <option> per registered, non-null model follows.
+ *  v1 ships only "multilingual"; v2 will add SPECTER2 (English
+ *  scholar) and fastText (keyword-level) without touching the
+ *  popup code — flip them to non-null in `models.ts` and they
+ *  show up here automatically. */
+function populateEmbeddingModels(): void {
+  if (!EMBED_SELECT) return;
+  const offOpt = EMBED_SELECT.querySelector<HTMLOptionElement>(
+    'option[value="off"]'
+  );
+  EMBED_SELECT.replaceChildren();
+  if (offOpt) EMBED_SELECT.append(offOpt);
+  for (const m of listAvailableModels()) {
+    const opt = document.createElement("option");
+    opt.value = m.id;
+    const sizeMB = Math.round(m.sizeBytes / (1024 * 1024));
+    opt.textContent = `${m.displayName} (~${sizeMB} MB)`;
+    EMBED_SELECT.append(opt);
+  }
+  EMBED_SELECT.value = "off";
+}
+
+populateEmbeddingModels();
+
 function paintEmbedStatus(status: ModelStatus, label?: string): void {
   if (!EMBED_STATUS) return;
   EMBED_STATUS.dataset.status = status;
@@ -455,16 +482,24 @@ function paintEmbedStatus(status: ModelStatus, label?: string): void {
 }
 
 EMBED_SELECT?.addEventListener("change", async () => {
-  const modelId = EMBED_SELECT.value;
-  if (modelId === "off") {
+  const raw = EMBED_SELECT.value;
+  if (raw === "off") {
     paintEmbedStatus("off");
     if (EMBED_QUERY) EMBED_QUERY.disabled = true;
     EMBED_RESULTS?.replaceChildren();
     return;
   }
+  // The <select> only contains values from the MODELS registry, so
+  // the cast is safe by construction. If a stale tab state somehow
+  // surfaces an unknown value we fall back to the first available
+  // model rather than crashing.
+  const validIds = listAvailableModels().map((m) => m.id);
+  const modelId: ModelId = (validIds as string[]).includes(raw)
+    ? (raw as ModelId)
+    : (validIds[0] ?? "multilingual");
   paintEmbedStatus("loading", "loading…");
   if (EMBED_QUERY) EMBED_QUERY.disabled = true;
-  const r = await loadEmbeddingModel(bridge, modelId as "multilingual");
+  const r = await loadEmbeddingModel(bridge, modelId);
   if (r.ok) {
     paintEmbedStatus("loaded", "ready");
     if (EMBED_QUERY) EMBED_QUERY.disabled = false;
@@ -563,9 +598,13 @@ document
     // also dump the index size + first 5 entries so the user can
     // verify the index is loaded.
     try {
+      // Use the first available model from the registry rather
+      // than hardcoding "multilingual" — when v2 ships SPECTER2
+      // or fastText, the dev tool will follow the registry.
+      const devModelId = listAvailableModels()[0]?.id ?? "multilingual";
       const res = (await bridge.sendMessage({
         type: MSG.EMBED_FIND_SIMILAR,
-        payload: { text: "BERT", modelId: "multilingual" },
+        payload: { text: "BERT", modelId: devModelId },
       })) as { ok?: boolean; error?: string; data?: { vector?: number[] } } | undefined;
       if (!res?.ok) {
         devAppend(`find-similar "BERT" → error\n  ${res?.error ?? "unknown"}`);

@@ -21,7 +21,7 @@ import type { ModelId } from "./models";
 /** A loaded model is a function: text -> embedding vector. The
  *  Float32Array is the standard output dtype of the MiniLM
  *  family. */
-export type Embedder = (text: string) => Promise<Float32Array>;
+type Embedder = (text: string) => Promise<Float32Array>;
 
 /** Cached model instances, keyed by ModelId. Re-loading is a
  *  no-op after the first call (the library caches internally
@@ -30,7 +30,7 @@ const loaded = new Map<ModelId, Promise<Embedder>>();
 
 /** Result of a load attempt — what the popup needs to show
  *  progress and the user needs to know. */
-export type LoadResult =
+type LoadResult =
   | { ok: true; modelId: ModelId; ms: number }
   | { ok: false; modelId: ModelId; error: string };
 

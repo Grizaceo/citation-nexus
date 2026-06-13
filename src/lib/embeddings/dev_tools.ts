@@ -100,10 +100,16 @@ export async function checkModelStatus(
 
 /** Trigger a model load. The popup calls this when the user
  *  picks a model from the dropdown. Resolves with the status
- *  after the load completes (or fails). */
+ *  after the load completes (or fails).
+ *
+ *  `modelId` is typed as `string` rather than the narrower
+ *  `ModelId` literal so the popup can pass values that haven't
+ *  been pre-validated against the registry (e.g. from a stale
+ *  <select>). The background normalizes the value through the
+ *  same registry before the actual load. */
 export async function loadModel(
   bridge: RuntimeBridge,
-  modelId: "multilingual"
+  modelId: string
 ): Promise<{ ok: boolean; error?: string }> {
   const res = (await bridge.sendMessage({
     type: "LOAD_EMBEDDING_MODEL",

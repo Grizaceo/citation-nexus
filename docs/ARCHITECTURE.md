@@ -64,6 +64,14 @@ exists to expose the same data over a CLI-friendly JSON API.
 
 - Renders the active tab's findings as category chips.
 - Rescan / Options buttons.
+- **Embeddings section is opt-in**: hidden by default behind a
+  "Use semantic search" checkbox in the actions row. When
+  unchecked, the section is `display:none` and the service
+  worker is never asked to load the ONNX runtime WASM (22.5 MB).
+  The bundled WASM is still shipped with the extension (see
+  `wxt-plugins/transformers-wasm.ts`); the opt-in only gates the
+  runtime load + service-worker memory cost. The persisted
+  flag is `nx.embeddings.enabled.v1` in `chrome.storage.local`.
 
 ### Options (`src/entrypoints/options/`)
 

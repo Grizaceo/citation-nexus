@@ -51,10 +51,39 @@ export interface BridgeDeps {
 
 export interface IncomingMessage {
   type: string;
-  payload?: any;
+  // Loose shape: the message router reads `payload?.foo` with
+  // optional chaining + nullish defaults everywhere, so a
+  // `Record<string, unknown>` is enough. The narrow types live at
+  // the consumer (each MSG.* handler validates what it needs).
+  payload?: Record<string, unknown>;
   tabId?: number;
   key?: string;
   senderTabId?: number;
+}
+
+/** Read a string-typed field from a loose payload. Returns
+ *  `fallback` when the key is missing or the value isn't a string.
+ *  Cheaper than a full schema validator for the dozen or so
+ *  fields the router reads. */
+function pluckString(
+  payload: Record<string, unknown> | undefined,
+  key: string,
+  fallback: string
+): string {
+  const v = payload?.[key];
+  return typeof v === "string" ? v : fallback;
+}
+
+/** Read a Finding[]-typed field. Falls back to `[]` when the key
+ *  is missing or the value isn't an array. We don't validate the
+ *  element shape here — the consumer (TabState, the popup) trusts
+ *  that the content script sent a well-formed findings list. */
+function pluckFindings(
+  payload: Record<string, unknown> | undefined,
+  key: string
+): Finding[] {
+  const v = payload?.[key];
+  return Array.isArray(v) ? (v as Finding[]) : [];
 }
 
 export interface Sender {
@@ -79,9 +108,9 @@ export function handleMessage(
     case MSG.CITATIONS_UPDATE: {
       const tabId = sender.tab?.id ?? msg.senderTabId ?? -1;
       deps.tabStates.set(tabId, {
-        url: msg.payload?.url ?? "",
-        title: msg.payload?.title ?? "",
-        findings: msg.payload?.findings ?? [],
+        url: pluckString(msg.payload, "url", ""),
+        title: pluckString(msg.payload, "title", ""),
+        findings: pluckFindings(msg.payload, "findings"),
         scannedAt: Date.now(),
       });
       return { sync: true, reply: { ok: true } };
@@ -185,8 +214,10 @@ export function handleMessage(
           return;
         }
         try {
-          await deps.loadEmbeddingModel(msg.payload?.modelId ?? "multilingual");
-          resolve({ ok: true, modelId: msg.payload?.modelId });
+          await deps.loadEmbeddingModel(
+            pluckString(msg.payload, "modelId", "multilingual")
+          );
+          resolve({ ok: true, modelId: pluckString(msg.payload, "modelId", "multilingual") });
         } catch (e) {
           resolve({
             ok: false,
@@ -211,12 +242,12 @@ export function handleMessage(
           return;
         }
         try {
-          const text = (msg.payload?.text ?? "").trim();
+          const text = pluckString(msg.payload, "text", "").trim();
           if (!text) {
             resolve({ ok: false, error: "empty text" });
             return;
           }
-          const modelId = msg.payload?.modelId ?? "multilingual";
+          const modelId = pluckString(msg.payload, "modelId", "multilingual");
           const vector = await deps.embedText(modelId, text);
           resolve({
             ok: true,

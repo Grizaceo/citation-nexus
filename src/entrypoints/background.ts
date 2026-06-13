@@ -21,9 +21,18 @@ export default defineBackground(() => {
         chrome.scripting.executeScript({ target: { tabId }, files }),
       sendNativeMessage: (
         application: string,
-        message: any,
+        message: unknown,
         callback: (response: unknown) => void
-      ) => chrome.runtime.sendNativeMessage(application, message, callback),
+      ) =>
+        // @types/chrome declares the second arg as `Object`; we
+        // pass `unknown` (a strict superset) and cast at the
+        // boundary. The actual message shape is enforced by the
+        // native host's own JSON contract.
+        chrome.runtime.sendNativeMessage(
+          application,
+          message as object,
+          callback
+        ),
       // Embedding model wiring. The loader does its own dynamic
       // import of @huggingface/transformers; the WASM is extracted
       // by wxt-plugins/transformers-wasm.ts so the bundle stays

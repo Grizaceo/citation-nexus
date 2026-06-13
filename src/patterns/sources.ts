@@ -304,9 +304,6 @@ function walkElements(root: Node, visit: (el: Element) => void): void {
   }
 }
 
-/** Re-export for tests. */
-export const _internal = { walkElements, walkJsonLd, classifyAndEmit };
-
 /** Convenience: scan ALL high-confidence sources in one call. */
 export function scanAllSources(root: Node): PureFinding[] {
   return [

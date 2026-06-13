@@ -59,7 +59,7 @@ export function cosineSimilarity(
 }
 
 /** A scored item: anything with a numeric `vector` field. */
-export interface ScoredItem<T = unknown> {
+interface ScoredItem<T = unknown> {
   vector: Float32Array;
   payload?: T;
   similarity?: number; // populated by topK
