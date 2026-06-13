@@ -26,7 +26,7 @@
 
       <section class="nx-categories" id="nx-categories"></section>
 
-      <section class="nx-embeddings" id="nx-embeddings">
+      <section class="nx-embeddings nx-embeddings-hidden" id="nx-embeddings">
         <header class="nx-embeddings-header">
           <span class="nx-embeddings-label">Embeddings</span>
           <select class="nx-embeddings-select" id="nx-embeddings-model" title="Pick an embedding model. Multilingual downloads ~25 MB on first use.">
@@ -50,6 +50,10 @@
         <label class="nx-toggle-line" title="Highlight citation IDs in the page (off = quiet diagonal reading)">
           <input type="checkbox" id="nx-keywords" />
           <span>Show keywords</span>
+        </label>
+        <label class="nx-toggle-line nx-toggle-line-advanced" title="Show the semantic-search section. The first time you pick a model the extension loads ~25 MB into the service worker.">
+          <input type="checkbox" id="nx-embeddings-enabled" />
+          <span>Use semantic search</span>
         </label>
         <button class="nx-btn" id="nx-rescan">Rescan tab</button>
         <button class="nx-btn" id="nx-options">Options</button>

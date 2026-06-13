@@ -48,6 +48,15 @@ const PAUSED_KEY = "nx.paused.v1";
 // [Download PDF] action still works — the keyword is just not
 // visually highlighted.
 const KEYWORDS_KEY = "nx.keywords.v1";
+// Opt-in flag for the embeddings section. Default OFF — most users
+// just want the in-page highlights, and the embeddings feature
+// loads ~22.5 MB of ONNX runtime WASM into the service worker the
+// first time they pick a model. The flag only controls the
+// popup's visibility; the bundled WASM is always shipped (see
+// wxt-plugins/transformers-wasm.ts). When the user disables this
+// flag the embeddings section is hidden and the dropdown is reset
+// to "off" so a future opt-in starts clean.
+const EMBEDDINGS_ENABLED_KEY = "nx.embeddings.enabled.v1";
 
 interface TabState {
   url: string;
@@ -291,6 +300,66 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 void loadKeywordsState();
+
+// ── Embeddings opt-in toggle ──────────────────────────────────
+// The embeddings section is hidden by default (see the
+// `nx-embeddings-hidden` class in style.css). The user must
+// explicitly check "Use semantic search" in the actions row
+// before the section becomes visible. Toggling off again hides
+// the section and resets the dropdown to "off" — the model
+// itself stays loaded in the service worker if it was already
+// pulled in, but a fresh opt-in starts from a clean state.
+let embeddingsEnabled = false;
+const embeddingsSection = document.getElementById("nx-embeddings");
+const embeddingsEnabledCheckbox = document.getElementById(
+  "nx-embeddings-enabled"
+) as HTMLInputElement | null;
+
+function paintEmbeddingsVisibility(): void {
+  if (embeddingsSection) {
+    embeddingsSection.classList.toggle("nx-embeddings-hidden", !embeddingsEnabled);
+  }
+  if (embeddingsEnabledCheckbox) {
+    embeddingsEnabledCheckbox.checked = embeddingsEnabled;
+  }
+}
+
+async function loadEmbeddingsEnabledState(): Promise<void> {
+  const stored = await chrome.storage.local.get(EMBEDDINGS_ENABLED_KEY);
+  embeddingsEnabled = stored[EMBEDDINGS_ENABLED_KEY] === true;
+  paintEmbeddingsVisibility();
+}
+
+embeddingsEnabledCheckbox?.addEventListener("change", async () => {
+  embeddingsEnabled = embeddingsEnabledCheckbox.checked;
+  await chrome.storage.local.set({ [EMBEDDINGS_ENABLED_KEY]: embeddingsEnabled });
+  // If the user just disabled the section, reset the dropdown to
+  // "off" so a future opt-in starts clean. We don't unload the
+  // model from the service worker — that's lazy GC territory and
+  // the user can always reload the popup to recover. Hiding the
+  // section is enough to stop the user from accidentally firing
+  // another search.
+  if (!embeddingsEnabled) {
+    if (EMBED_SELECT) EMBED_SELECT.value = "off";
+    paintEmbedStatus("off");
+    if (EMBED_QUERY) {
+      EMBED_QUERY.disabled = true;
+      EMBED_QUERY.value = "";
+    }
+    EMBED_RESULTS?.replaceChildren();
+  }
+  paintEmbeddingsVisibility();
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local") return;
+  if (EMBEDDINGS_ENABLED_KEY in changes) {
+    embeddingsEnabled = changes[EMBEDDINGS_ENABLED_KEY].newValue === true;
+    paintEmbeddingsVisibility();
+  }
+});
+
+void loadEmbeddingsEnabledState();
 
 // ── Pause / Resume toggle ─────────────────────────────────────
 // Reads/writes the shared paused flag. The content script listens

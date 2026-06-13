@@ -167,6 +167,16 @@ body {
   border-radius: 6px;
   border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.06));
 }
+/* Hidden by default — the user must opt in via the "Use semantic
+ * search" toggle in the actions section. This keeps the popup
+ * quiet for the 95% of users who just want the in-page
+ * highlights, and makes the ~25 MB on-first-use cost an explicit
+ * choice. The 22.5 MB WASM is still bundled (see wxt-plugins/
+ * transformers-wasm.ts), but the service worker doesn't load it
+ * unless the user picks a model from the dropdown. */
+.nx-embeddings-hidden {
+  display: none;
+}
 .nx-embeddings-header {
   display: flex;
   align-items: center;
