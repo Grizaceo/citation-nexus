@@ -209,6 +209,61 @@ describe("scanJsonLd", () => {
     expect(findings).toHaveLength(1);
     expect(findings[0]!.text).toBe("10.1038/nature12373");
   });
+  // Regression: dogfooding on 2026-06-13 found a YouTube video
+  // whose JSON-LD description contained "arXiv:2605.22166" but
+  // neither in identifier/sameAs/url. Two bugs conspired to
+  // suppress the high-confidence path:
+  //   1. walkJsonLd didn't recurse into "description"
+  //   2. classifyAndEmit only recognized the URL form
+  //      (arxiv.org/abs/...), not the prefix form ("arXiv:...")
+  // Fix: walker recurses into description, classifier handles
+  // the prefix form. The finding then gets source="json-ld"
+  // and confidence=0.95, which crosses MIN_DOWNLOAD_CONFIDENCE
+  // (0.85) and unlocks the [Save] button in the popup.
+  it("extracts arXiv: prefix from description (YouTube case)", () => {
+    const script = document.createElement("script");
+    script.setAttribute("type", "application/ld+json");
+    script.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "VideoObject",
+      name: "4 Layer AI Harness For LLMs",
+      // Real-world excerpt of a YouTube JSON-LD description.
+      description:
+        'All rights w/ authors: "Adapting the Interface, Not the Model"\nTianshi Xu et al.\narXiv:2605.22166\n#airesearch',
+      identifier: "https://www.youtube.com/watch?v=NruQu3TNx-M",
+    });
+    document.head.append(script);
+
+    const findings = scanJsonLd(document);
+    const arxiv = findings.find((f) => f.patternId === "arxiv.id");
+    expect(arxiv).toBeDefined();
+    expect(arxiv!.text).toBe("2605.22166");
+    expect(arxiv!.source).toBe("json-ld");
+    expect(arxiv!.confidence).toBeGreaterThanOrEqual(0.85);
+  });
+  it("extracts arXiv URL with version suffix from description", () => {
+    const script = document.createElement("script");
+    script.setAttribute("type", "application/ld+json");
+    script.textContent = JSON.stringify({
+      "@type": "VideoObject",
+      description: "see https://arxiv.org/abs/2401.01234v2 for details",
+    });
+    document.head.append(script);
+
+    const findings = scanJsonLd(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.text).toBe("2401.01234v2");
+  });
+  it("does not false-positive on prose like 'arxiv' without an ID", () => {
+    const script = document.createElement("script");
+    script.setAttribute("type", "application/ld+json");
+    script.textContent = JSON.stringify({
+      "@type": "VideoObject",
+      description: "We discuss the latest arxiv papers and their impact.",
+    });
+    document.head.append(script);
+    expect(scanJsonLd(document)).toHaveLength(0);
+  });
 
   it("skips malformed JSON silently", () => {
     const script = document.createElement("script");

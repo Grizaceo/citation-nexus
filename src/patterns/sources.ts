@@ -237,8 +237,16 @@ function walkJsonLd(
     return;
   }
   if (!isObject(node)) return;
-  // Direct identifier strings
-  for (const key of ["identifier", "doi", "sameAs", "url"]) {
+  // Direct identifier strings. `description` is included because
+  // YouTube puts the arXiv ID of the discussed paper in the video
+  // description (a free-text JSON-LD field). When the walker
+  // finds "arXiv:2605.22166" in that string, classifyAndEmit
+  // extracts the ID and we emit a high-confidence finding. Without
+  // this, a YouTube video about an arXiv paper produces only a
+  // low-confidence text-match finding (source="text", no [Save]
+  // button in the popup) — a real usability gap. Discovered
+  // during dogfooding on 2026-06-13.
+  for (const key of ["identifier", "doi", "sameAs", "url", "description"]) {
     const v = node[key];
     if (typeof v === "string") {
       classifyAndEmit(v, emit);
@@ -274,8 +282,18 @@ function classifyAndEmit(
     emit(doi[1]!, "doi");
     return;
   }
-  // arXiv form
-  const arxiv = trimmed.match(/arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5}(?:v\d+)?)/i);
+  // arXiv form: URL (arxiv.org/abs/...) OR prefixed
+  // ("arXiv:NNNN.NNNNN", case-insensitive). The prefix form is
+  // common in free-text JSON-LD fields like the YouTube video
+  // description and academic blog posts. The URL form was the
+  // only one matched before, so prefix-form citations slipped
+  // through to the low-confidence text scanner. Discovered
+  // during dogfooding on 2026-06-13: a YouTube video about an
+  // arXiv paper had the arXiv ID only in `arXiv:NNNN.NNNNN`
+  // format inside the JSON-LD description.
+  const arxiv = trimmed.match(
+    /(?:arxiv\.org\/(?:abs|pdf)\/|arXiv:\s*)(\d{4}\.\d{4,5}(?:v\d+)?)/i
+  );
   if (arxiv) {
     emit(arxiv[1]!, "arxiv");
     return;
