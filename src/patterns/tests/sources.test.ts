@@ -3,7 +3,7 @@ import {
   applyPatterns,
   PatternRegistry,
 } from "@/patterns/registry";
-import { scanMetaTags, scanCanonicalLink, scanJsonLd } from "@/patterns/sources";
+import { scanMetaTags, scanCanonicalLink, scanJsonLd, scanOpenGraph } from "@/patterns/sources";
 import { citationsSet } from "@/patterns/sets/citations";
 
 function reg(): PatternRegistry {
@@ -338,5 +338,75 @@ describe("applyPatterns — confidence ladder integration", () => {
     // Meta survives a `{ confidenceBelow: 0.85 }` filter; text does not.
     expect((metaF?.confidence ?? 0) >= 0.85).toBe(true);
     expect((textF?.confidence ?? 1) >= 0.85).toBe(false);
+  });
+});
+
+describe("scanOpenGraph", () => {
+  it("extracts DOI from og:url (doi.org URL)", () => {
+    const meta = document.createElement("meta");
+    meta.setAttribute("property", "og:url");
+    meta.setAttribute("content", "https://doi.org/10.1038/nature12373");
+    document.head.append(meta);
+
+    const findings = scanOpenGraph(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.patternId).toBe("doi");
+    expect(findings[0]!.text).toBe("10.1038/nature12373");
+    expect(findings[0]!.source).toBe("opengraph");
+    expect(findings[0]!.confidence).toBe(0.85);
+  });
+
+  it("extracts bare DOI from og:url (no doi.org prefix)", () => {
+    const meta = document.createElement("meta");
+    meta.setAttribute("property", "og:url");
+    meta.setAttribute("content", "10.1186/s13613-024-01277-3");
+    document.head.append(meta);
+
+    const findings = scanOpenGraph(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.text).toBe("10.1186/s13613-024-01277-3");
+  });
+
+  it("extracts arXiv ID (URL form) from og:url", () => {
+    const meta = document.createElement("meta");
+    meta.setAttribute("property", "og:url");
+    meta.setAttribute("content", "https://arxiv.org/abs/2401.01234");
+    document.head.append(meta);
+
+    const findings = scanOpenGraph(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.patternId).toBe("arxiv.id");
+    expect(findings[0]!.text).toBe("2401.01234");
+  });
+
+  it("extracts arXiv ID (prefix form) from og:see_also", () => {
+    const meta = document.createElement("meta");
+    meta.setAttribute("property", "og:see_also");
+    meta.setAttribute("content", "see arXiv:2605.22166 for the paper");
+    document.head.append(meta);
+
+    const findings = scanOpenGraph(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.text).toBe("2605.22166");
+  });
+
+  it("ignores non-og: meta tags", () => {
+    const meta = document.createElement("meta");
+    meta.setAttribute("name", "citation_doi");
+    meta.setAttribute("content", "10.1038/nature12373");
+    document.head.append(meta);
+    expect(scanOpenGraph(document)).toHaveLength(0);
+  });
+
+  it("ignores og:title / og:description (only url/see_also are scanned)", () => {
+    const title = document.createElement("meta");
+    title.setAttribute("property", "og:title");
+    title.setAttribute("content", "Paper 10.1038/x about Y");
+    document.head.append(title);
+    const desc = document.createElement("meta");
+    desc.setAttribute("property", "og:description");
+    desc.setAttribute("content", "Discusses arXiv:2401.01234");
+    document.head.append(desc);
+    expect(scanOpenGraph(document)).toHaveLength(0);
   });
 });

@@ -60,6 +60,14 @@ const META_TAG_MAP: Record<string, { patternId: string; extract: (raw: string) =
     patternId: "pmcid",
     extract: (raw) => raw.trim(),
   },
+  // The publisher's direct PDF URL (PubMed Central uses this;
+  // some other Highwire-compliant publishers do too). We
+  // recognize it as a separate pattern so the downloader can
+  // use the URL as-is instead of constructing one from the DOI.
+  citation_pdf_url: {
+    patternId: "pdf_url",
+    extract: (raw) => raw.trim(),
+  },
 };
 
 /** Walk for <meta name="citation_*"> tags and emit findings. */
@@ -322,11 +330,73 @@ function walkElements(root: Node, visit: (el: Element) => void): void {
   }
 }
 
+/** Walk for OpenGraph <meta property="og:..."> tags. Many blogs
+ *  and social-media-derived pages set og:url to the canonical
+ *  paper URL (often a doi.org link) even when no citation_*
+ *  meta tags are present. We extract DOIs and arXiv IDs from
+ *  the og:url and og:see_also values and emit findings at
+ *  confidence 0.85 — below canonical (0.9) because og: is a
+ *  publisher-declared social-media hint rather than an
+ *  authoritative claim. Still well above the 0.85 download
+ *  threshold so [Save] works for these pages. */
+export function scanOpenGraph(root: Node): PureFinding[] {
+  const out: PureFinding[] = [];
+  walkElements(root, (el) => {
+    if (el.tagName !== "META") return;
+    const meta = el as HTMLMetaElement;
+    const prop = meta.getAttribute("property")?.toLowerCase();
+    if (!prop?.startsWith("og:")) return;
+    const value = meta.content ?? "";
+    if (!value) return;
+    // og:url is the canonical URL the publisher wants social
+    // cards to point to. og:see_also can list related URLs.
+    if (prop === "og:url" || prop === "og:see_also") {
+      // DOI form (bare or doi.org URL)
+      const doi = value.match(/(?:doi\.org\/)?(10\.\d{4,9}\/[^?\s#]+)/i);
+      if (doi) {
+        out.push({
+          patternId: "doi",
+          category: "citation",
+          label: `og:url DOI`,
+          text: doi[1]!,
+          start: 0,
+          end: doi[1]!.length,
+          originalLength: doi[1]!.length,
+          priority: 0,
+          source: "opengraph",
+          confidence: 0.85,
+        });
+        return;
+      }
+      // arXiv form (URL or prefix)
+      const arxiv = value.match(
+        /(?:arxiv\.org\/(?:abs|pdf)\/|arXiv:\s*)(\d{4}\.\d{4,5}(?:v\d+)?)/i
+      );
+      if (arxiv) {
+        out.push({
+          patternId: "arxiv.id",
+          category: "citation",
+          label: `og:url arXiv`,
+          text: arxiv[1]!,
+          start: 0,
+          end: arxiv[1]!.length,
+          originalLength: arxiv[1]!.length,
+          priority: 0,
+          source: "opengraph",
+          confidence: 0.85,
+        });
+      }
+    }
+  });
+  return out;
+}
+
 /** Convenience: scan ALL high-confidence sources in one call. */
 export function scanAllSources(root: Node): PureFinding[] {
   return [
     ...scanMetaTags(root),
     ...scanCanonicalLink(root),
     ...scanJsonLd(root),
+    ...scanOpenGraph(root),
   ];
 }

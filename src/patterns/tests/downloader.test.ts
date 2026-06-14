@@ -142,10 +142,72 @@ describe("getDownloadInfo — unsupported patterns", () => {
     expect(getDownloadInfo(f)).toBe(null);
   });
 
-  it("returns null for biorxiv/medrxiv (need full DOI)", () => {
+  it("returns null for biorxiv/medrxiv patterns when source is text body", () => {
+    // The biorxiv/medrxiv PATTERN itself (matching DOIs that
+    // include the biorxiv/medrxiv slug) is reachable via the
+    // downloader now (with the .full.pdf URL). But the source
+    // gate still wins: a text-body match is below 0.85 confidence
+    // and is rejected. This test guards the gate, not the URL.
     const f = mkFinding({
       patternId: "biorxiv",
       text: "10.1101/2021.01.01.123456",
+      source: "text",
+      confidence: 0.7,
+    });
+    expect(getDownloadInfo(f)).toBe(null);
+  });
+
+  it("biorxiv high-confidence -> biorxiv.org/content/{DOI}.full.pdf", () => {
+    const f = mkFinding({
+      patternId: "biorxiv",
+      text: "10.1101/2021.01.01.123456",
+      source: "meta",
+      confidence: 1.0,
+    });
+    const info = getDownloadInfo(f);
+    expect(info).not.toBe(null);
+    expect(info!.url).toBe(
+      "https://www.biorxiv.org/content/10.1101/2021.01.01.123456.full.pdf"
+    );
+    expect(info!.format).toBe("pdf");
+  });
+
+  it("medrxiv high-confidence -> medrxiv.org/content/{DOI}.full.pdf", () => {
+    const f = mkFinding({
+      patternId: "medrxiv",
+      text: "10.1101/2021.01.02.654321",
+      source: "meta",
+      confidence: 1.0,
+    });
+    const info = getDownloadInfo(f);
+    expect(info).not.toBe(null);
+    expect(info!.url).toBe(
+      "https://www.medrxiv.org/content/10.1101/2021.01.02.654321.full.pdf"
+    );
+  });
+
+  it("citation_pdf_url -> use the URL as-is (PMC case)", () => {
+    const url =
+      "https://pmc.ncbi.nlm.nih.gov/articles/PMC10984893/pdf/13613_2024_Article_1277.pdf";
+    const f = mkFinding({
+      patternId: "pdf_url",
+      text: url,
+      source: "meta",
+      confidence: 1.0,
+    });
+    const info = getDownloadInfo(f);
+    expect(info).not.toBe(null);
+    expect(info!.url).toBe(url);
+    expect(info!.format).toBe("pdf");
+    expect(info!.filename).toBe("13613_2024_Article_1277");
+  });
+
+  it("pdf_url with non-http scheme is rejected", () => {
+    const f = mkFinding({
+      patternId: "pdf_url",
+      text: "ftp://example.com/paper.pdf",
+      source: "meta",
+      confidence: 1.0,
     });
     expect(getDownloadInfo(f)).toBe(null);
   });

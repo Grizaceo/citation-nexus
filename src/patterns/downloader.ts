@@ -90,13 +90,70 @@ export function getDownloadInfo(finding: Finding): DownloadInfo | null {
       };
     }
     case "pmid":
+      // PMID is the PubMed identifier, not directly a download
+      // URL. The download path is via DOI (next case) or via the
+      // accompanying `citation_pdf_url` (handled in its own case
+      // below). If neither is present, PMID is recognised as a
+      // citation in the popup but no [Save] button is shown.
+      return null;
     case "pmcid":
-    case "biorxiv":
-    case "medrxiv":
+      // Same as PMID: PMCID alone is not a download URL. When the
+      // page also has citation_pdf_url, that's the path the
+      // downloader takes (see the pdf_url case below).
+      return null;
+    case "biorxiv": {
+      // bioRxiv PDF: publisher serves a known canonical URL
+      // pattern. We trust the DOI from the page's own meta tag /
+      // text body, so this branch is reachable when the bioRxiv
+      // pattern emitted a text-body finding (confidence 0.7,
+      // gated out) OR a high-confidence source scanner finding.
+      // The high-confidence path through the meta tag uses the
+      // pdf_url case below, which is the more reliable match.
+      // This branch covers the case where the page is bioRxiv
+      // itself with the DOI in the URL but no citation_pdf_url
+      // meta tag.
+      const filename = sanitizeFilename(finding.text, "doi");
+      if (!filename) return null;
+      return {
+        url: `https://www.biorxiv.org/content/${finding.text}.full.pdf`,
+        category: "citation",
+        filename,
+        format: "pdf",
+      };
+    }
+    case "medrxiv": {
+      // Same as bioRxiv but for medRxiv.
+      const filename = sanitizeFilename(finding.text, "doi");
+      if (!filename) return null;
+      return {
+        url: `https://www.medrxiv.org/content/${finding.text}.full.pdf`,
+        category: "citation",
+        filename,
+        format: "pdf",
+      };
+    }
+    case "pdf_url": {
+      // The publisher put the direct PDF URL in a
+      // <meta name="citation_pdf_url"> tag. This is the most
+      // reliable path for PubMed Central (PMC) articles:
+      //   <meta name="citation_pdf_url" content="https://pmc.ncbi.nlm.nih.gov/articles/PMC10984893/pdf/13613_2024_Article_1277.pdf">
+      // We treat the URL itself as the download target. The
+      // filename is derived from the URL's last path segment
+      // (minus the .pdf extension) so it stays unique.
+      const url = finding.text.trim();
+      if (!/^https?:\/\//i.test(url)) return null;
+      const lastSeg = url.split("/").pop() ?? "";
+      const stem = lastSeg.replace(/\.pdf$/i, "");
+      if (!stem) return null;
+      return {
+        url,
+        category: "citation",
+        filename: stem.slice(0, 200),
+        format: "pdf",
+      };
+    }
     case "github":
-      // v1: not supported. PubMed/bioRxiv need an intermediate
-      // hop (EuropePMC, bioRxiv PDF URL). GitHub needs clone
-      // URL parsing. See plans for v2.
+      // v1: not supported. Needs clone URL parsing + zip download.
       return null;
     default:
       // Science patterns (math/physics/bio/cs/chem) and any
