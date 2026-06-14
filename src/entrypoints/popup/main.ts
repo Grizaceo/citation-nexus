@@ -18,65 +18,20 @@ import {
   loadModel as loadEmbeddingModel,
   embedText as probeEmbed,
   formatStatus,
-  type RuntimeBridge,
   type ModelStatus,
 } from "@/lib/embeddings/dev_tools";
 import { listAvailableModels, type ModelId } from "@/lib/embeddings/models";
 import type { Finding } from "@/patterns/core";
-
-const MSG = {
-  GET_TAB_CITATIONS: "GET_TAB_CITATIONS",
-  REQUEST_SCAN: "REQUEST_SCAN",
-  COPY_FINDING: "COPY_FINDING",
-  DOWNLOAD_PAPER: "DOWNLOAD_PAPER",
-  EMBED_FIND_SIMILAR: "EMBED_FIND_SIMILAR",
-};
-
-// The popup → background message bridge. The dev_tools helpers
-// accept any RuntimeBridge-shaped object, so this is a thin wrapper.
-const bridge: RuntimeBridge = {
-  sendMessage: (msg) => chrome.runtime.sendMessage(msg),
-};
-
-// Persisted in chrome.storage.local. The content script reads the
-// same key before each scan and listens for changes. Toggling
-// here takes effect within ~1s on every active tab.
-const PAUSED_KEY = "nx.paused.v1";
-// When true, the per-category keyword highlight spans are emitted
-// in the page (the bright colorful boxes). Default false: only
-// the subtle sentence wrapper renders, so diagonal reading
-// stays clean. Citation IDs still appear in the popup; the
-// [Download PDF] action still works — the keyword is just not
-// visually highlighted.
-const KEYWORDS_KEY = "nx.keywords.v1";
-// Opt-in flag for the embeddings section. Default OFF — most users
-// just want the in-page highlights, and the embeddings feature
-// loads ~22.5 MB of ONNX runtime WASM into the service worker the
-// first time they pick a model. The flag only controls the
-// popup's visibility; the bundled WASM is always shipped (see
-// wxt-plugins/transformers-wasm.ts). When the user disables this
-// flag the embeddings section is hidden and the dropdown is reset
-// to "off" so a future opt-in starts clean.
-const EMBEDDINGS_ENABLED_KEY = "nx.embeddings.enabled.v1";
-
-interface TabState {
-  url: string;
-  title: string;
-  findings: Finding[];
-  scannedAt: number;
-}
-
-let currentTabId: number | undefined;
-let lastFindingsCount = -1;
-let pollHandle: number | undefined;
-
-// Cooldown for the auto-rescan. If the popup opens and finds an
-// empty state (background service worker was suspended and the
-// in-memory tabStates was wiped, or the content script never
-// scanned), trigger a re-scan. The cooldown prevents an infinite
-// loop on pages that genuinely have 0 findings.
-let lastAutoRescanAt = 0;
-const AUTO_RESCAN_COOLDOWN_MS = 30_000;
+import {
+  MSG,
+  bridge,
+  PAUSED_KEY,
+  KEYWORDS_KEY,
+  EMBEDDINGS_ENABLED_KEY,
+  AUTO_RESCAN_COOLDOWN_MS,
+  type TabState,
+  state,
+} from "./state";
 
 async function loadTab(): Promise<void> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -84,7 +39,7 @@ async function loadTab(): Promise<void> {
     setSub("No active tab");
     return;
   }
-  currentTabId = tab.id;
+  state.currentTabId = tab.id;
   const res = await chrome.runtime.sendMessage({
     type: MSG.GET_TAB_CITATIONS,
     tabId: tab.id,
@@ -93,8 +48,8 @@ async function loadTab(): Promise<void> {
     setSub("Background not ready");
     return;
   }
-  const state = res.state as TabState;
-  paintPopup(state);
+  const tabState = res.state as TabState;
+  paintPopup(tabState);
 
   // Empty state = the background has no findings for this tab. Two
   // common causes: (1) the content script hasn't scanned yet (page
@@ -104,10 +59,10 @@ async function loadTab(): Promise<void> {
   // We don't re-scan on every poll — the 30s cooldown stops us
   // from looping on pages that legitimately have 0 findings.
   if (
-    (state.findings ?? []).length === 0 &&
-    Date.now() - lastAutoRescanAt > AUTO_RESCAN_COOLDOWN_MS
+    (tabState.findings ?? []).length === 0 &&
+    Date.now() - state.lastAutoRescanAt > AUTO_RESCAN_COOLDOWN_MS
   ) {
-    lastAutoRescanAt = Date.now();
+    state.lastAutoRescanAt = Date.now();
     setSub("Scanning…");
     void chrome.runtime.sendMessage({ type: MSG.REQUEST_SCAN });
   }
@@ -118,16 +73,16 @@ function setSub(text: string): void {
   if (el) el.textContent = text;
 }
 
-function paintPopup(state: TabState): void {
-  const findings = state.findings ?? [];
-  setSub(state.title || state.url || "Active tab");
+function paintPopup(tabState: TabState): void {
+  const findings = tabState.findings ?? [];
+  setSub(tabState.title || tabState.url || "Active tab");
 
   document.getElementById("nx-stat-total")!.textContent = String(findings.length);
 
   // Same count as before? Skip the heavy DOM rebuild to avoid
   // losing focus / scroll on a noisy poll.
-  if (findings.length === lastFindingsCount) return;
-  lastFindingsCount = findings.length;
+  if (findings.length === state.lastFindingsCount) return;
+  state.lastFindingsCount = findings.length;
 
   // ── Category chips ──────────────────────────────────────────
   const counts = new Map<string, number>();
@@ -258,7 +213,7 @@ function renderFindingRow(f: Finding): HTMLElement {
 document.getElementById("nx-rescan")?.addEventListener("click", async () => {
   await chrome.runtime.sendMessage({ type: MSG.REQUEST_SCAN });
   // Force the next paint to refresh even if the count is the same.
-  lastFindingsCount = -1;
+  state.lastFindingsCount = -1;
   setTimeout(loadTab, 300);
 });
 
@@ -394,7 +349,7 @@ document.getElementById("nx-toggle")?.addEventListener("click", async () => {
   // Reset the auto-rescan cooldown so the new state is reflected
   // immediately (and so a manual toggle doesn't get clobbered by
   // a stale 'state is empty' check).
-  lastAutoRescanAt = 0;
+  state.lastAutoRescanAt = 0;
 });
 
 // React to changes from other contexts (DevTools tweaks, another
@@ -414,8 +369,8 @@ void loadPausedState();
 // is destroyed when the user clicks away, so setInterval is
 // cleaned up automatically.
 function startAutoRefresh(): void {
-  if (pollHandle === undefined) {
-    pollHandle = window.setInterval(() => {
+  if (state.pollHandle === undefined) {
+    state.pollHandle = window.setInterval(() => {
       void loadTab();
     }, 1000);
   }
@@ -425,7 +380,7 @@ function startAutoRefresh(): void {
   chrome.runtime.onMessage.addListener((msg: { type?: string }) => {
     if (msg.type === "CITATIONS_UPDATE") {
       // Bypass the same-count optimization; the source is fresh.
-      lastFindingsCount = -1;
+      state.lastFindingsCount = -1;
       void loadTab();
     }
   });
