@@ -7,14 +7,15 @@ section are higher priority.
 
 ## popup
 
-- [ ] **Refactor `popup/main.ts` (594 LOC, 6 concerns)** **Priority:** P1
-  The popup entry point has accumulated six distinct concerns:
-  findings rendering, keywords toggle, embeddings opt-in
-  toggle, pause/resume toggle, auto-refresh, dev tools.
-  Split into 4-5 files via a `makeToggle(state)` factory for
-  the three near-identical toggle sections (keywords,
-  embeddings-enabled, pause). Defer until the v2.1 release so
-  the v2 cutover stays small.
+- [x] **Refactor `popup/main.ts` (633 LOC → 6 files)** **Priority:** P1 ✓
+  Split into state.ts (MSG/bridge/storage keys/TabState/state),
+  render.ts (setSub/paintPopup/renderFindingRow), keywords.ts
+  (toggle), embeddings.ts (opt-in + dropdown + debounced search),
+  dev-tools.ts (Status/Embed/Find-similar), and a thin
+  orchestrator main.ts. Shipped in 5 phases (commits
+  2169c86, 240c7c4, 47c2ac1, 203ad87, 5484335) on 2026-06-13.
+  No behavior change. All tests + goldset + build green at
+  every commit. main.ts: 633 → 143 LOC.
 - [ ] **Deduplicate text-vs-meta findings with the same ID** **Priority:** P2
   When a citation ID is found in both text body (source="text",
   confidence 0.7) and JSON-LD description (source="json-ld",
