@@ -25,8 +25,6 @@ export const MSG = {
   EMBED_FIND_SIMILAR: "EMBED_FIND_SIMILAR",
 } as const;
 
-export type MessageType = (typeof MSG)[keyof typeof MSG];
-
 /** Minimal surface the dispatcher needs from chrome.* APIs. */
 export interface BridgeDeps {
   tabStates: Map<number, TabState>;

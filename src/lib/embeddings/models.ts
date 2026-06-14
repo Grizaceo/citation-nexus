@@ -64,9 +64,6 @@ export const MODELS: Record<ModelId, ModelMeta | null> = {
   keywords: null,
 };
 
-/** Default model id when the popup first opens the dropdown. */
-export const DEFAULT_MODEL_ID: ModelId = "multilingual";
-
 /** Returns the list of model options the popup should render. */
 export function listAvailableModels(): ModelMeta[] {
   const out: ModelMeta[] = [];
