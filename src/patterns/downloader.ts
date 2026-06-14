@@ -89,17 +89,38 @@ export function getDownloadInfo(finding: Finding): DownloadInfo | null {
         format: "html",
       };
     }
-    case "pmid":
-      // PMID is the PubMed identifier, not directly a download
-      // URL. The download path is via DOI (next case) or via the
-      // accompanying `citation_pdf_url` (handled in its own case
-      // below). If neither is present, PMID is recognised as a
-      // citation in the popup but no [Save] button is shown.
-      return null;
+    case "pmid": {
+      // PMID is the PubMed identifier. PubMed pages often don't
+      // include a citation_pdf_url (paywalled or not in PMC).
+      // As a best-effort fallback we route to the Europe PMC
+      // article landing page. Europe PMC hosts the same paper
+      // (with full text when open access) and is the canonical
+      // open mirror for PubMed. The fetcher saves the HTML; the
+      // user clicks through to find the PDF on Europe PMC's UI.
+      //
+      // This is NOT a direct PDF download. The honest alternative
+      // is to do an API hop: GET
+      //   https://www.ebi.ac.uk/europepmc/webservices/rest/MED/{PMID}?resultType=core&format=json
+      // to look up the PMCID, then construct the PMC PDF URL. But
+      // that requires changes to the fetcher (native host) and
+      // adds a network round-trip. Defer to v2 once the fetcher
+      // supports an async "look up then download" path.
+      const trimmed = finding.text.trim();
+      if (!/^\d{6,9}$/.test(trimmed)) return null;
+      return {
+        url: `https://europepmc.org/article/MED/${trimmed}`,
+        category: "citation",
+        filename: `pmid-${trimmed}`,
+        format: "html",
+      };
+    }
     case "pmcid":
       // Same as PMID: PMCID alone is not a download URL. When the
       // page also has citation_pdf_url, that's the path the
-      // downloader takes (see the pdf_url case below).
+      // downloader takes (see the pdf_url case below). When the
+      // page has only the PMCID and no pdf_url, the user falls back
+      // to either the DOI (via doi.org) or Europe PMC (if the
+      // patternId is "pmid" — see above).
       return null;
     case "biorxiv": {
       // bioRxiv PDF: publisher serves a known canonical URL

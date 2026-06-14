@@ -127,8 +127,34 @@ describe("getDownloadInfo — DOI", () => {
 });
 
 describe("getDownloadInfo — unsupported patterns", () => {
-  it("returns null for pmid (no direct PDF)", () => {
-    const f = mkFinding({ patternId: "pmid", text: "12345" });
+  it("returns null for pmid when confidence is below 0.85 (text body)", () => {
+    // PMID on a PubMed page comes from a citation_pmid meta tag
+    // (high confidence) and now gets a [Save] via Europe PMC.
+    // A text-body PMID match is still below 0.85 and gets gated
+    // out. This test guards the gate, not the URL.
+    const f = mkFinding({ patternId: "pmid", text: "12345", source: "text", confidence: 0.7 });
+    expect(getDownloadInfo(f)).toBe(null);
+  });
+
+  it("pmid high-confidence -> europepmc.org/article/MED/{PMID} (best-effort fallback)", () => {
+    // When the PubMed page has a citation_pmid meta tag but no
+    // citation_pdf_url, the user still gets a [Save] button.
+    // The fetch target is the Europe PMC article landing page
+    // (canonical open mirror for PubMed). The fetcher saves the
+    // HTML; the user clicks through to find the PDF on Europe
+    // PMC's UI. Not a direct PDF — the honest alternative would
+    // be an API hop (europepmc.org API to look up the PMCID then
+    // construct the PMC PDF URL), deferred to v2.
+    const f = mkFinding({ patternId: "pmid", text: "38217568", source: "meta", confidence: 1.0 });
+    const info = getDownloadInfo(f);
+    expect(info).not.toBe(null);
+    expect(info!.url).toBe("https://europepmc.org/article/MED/38217568");
+    expect(info!.format).toBe("html");
+    expect(info!.filename).toBe("pmid-38217568");
+  });
+
+  it("pmid with malformed (non-numeric) text returns null", () => {
+    const f = mkFinding({ patternId: "pmid", text: "PMID: 12345", source: "meta", confidence: 1.0 });
     expect(getDownloadInfo(f)).toBe(null);
   });
 
