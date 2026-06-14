@@ -398,5 +398,111 @@ export function scanAllSources(root: Node): PureFinding[] {
     ...scanCanonicalLink(root),
     ...scanJsonLd(root),
     ...scanOpenGraph(root),
+    ...scanMicrodata(root),
   ];
+}
+
+/** Walk for Schema.org microdata (itemscope / itemprop / itemtype).
+ *  Many academic blogs and institutional pages mark up their
+ *  paper references with HTML microdata instead of (or in
+ *  addition to) JSON-LD. The shape is:
+ *
+ *    <div itemscope itemtype="https://schema.org/ScholarlyArticle">
+ *      <span itemprop="name">Paper title</span>
+ *      <span itemprop="identifier">10.1038/nature12373</span>
+ *      <span itemprop="identifier">arXiv:2401.01234</span>
+ *    </div>
+ *
+ *  We extract DOI and arXiv values from `itemprop="identifier"`
+ *  (and a few related itemprop names: doi, sameAs) and emit
+ *  findings with source="microdata" and confidence=0.85 —
+ *  same threshold as og:url. Microdata is page-authored and
+ *  easy to fake, so we keep it below the meta-tag (1.0) and
+ *  JSON-LD (0.95) tiers. The function only walks elements
+ *  that have an itemscope ancestor; loose itemprop attributes
+ *  without a parent itemscope are not real microdata and are
+ *  ignored. */
+export function scanMicrodata(root: Node): PureFinding[] {
+  const out: PureFinding[] = [];
+  walkElements(root, (el) => {
+    if (el.tagName !== "DIV" && el.tagName !== "SECTION" && el.tagName !== "ARTICLE") {
+      return;
+    }
+    if (!el.hasAttribute("itemscope")) return;
+    // Only act on academic / document-type itemscopes. Other
+    // itemtypes (Person, Organization, Product, ...) almost
+    // never carry citation identifiers.
+    const itemtype = el.getAttribute("itemtype")?.toLowerCase() ?? "";
+    const isAcademic =
+      itemtype.includes("scholarlyarticle") ||
+      itemtype.includes("creativework") ||
+      itemtype.includes("article") ||
+      itemtype.includes("publication") ||
+      itemtype === ""; // bare itemscope with no itemtype — accept defensively
+    if (!isAcademic) return;
+    // Walk descendants looking for itemprop attributes. We
+    // use a scoped search (not document-wide) so two adjacent
+    // ScholarlyArticle blocks don't cross-contaminate.
+    const descendants = el.querySelectorAll("[itemprop]");
+    for (const desc of descendants) {
+      const prop = desc.getAttribute("itemprop")?.toLowerCase() ?? "";
+      if (
+        prop !== "identifier" &&
+        prop !== "doi" &&
+        prop !== "sameas" &&
+        prop !== "url"
+      ) {
+        continue;
+      }
+      // Microdata value lookup: HTMLMicrodataElement spec says
+      // a) the element's `content` attribute (only on <meta>),
+      // b) the element's `href` (on <a>, <link>, <area>, ...),
+      // c) the element's `src` (on <img>, <iframe>, <source>, ...),
+      // d) otherwise the element's textContent. We check all
+      // four because real pages mix the conventions. Empty
+      // values are skipped.
+      const value =
+        desc.getAttribute("content") ??
+        desc.getAttribute("href") ??
+        desc.getAttribute("src") ??
+        (desc.textContent ?? "").trim();
+      if (!value) continue;
+      // DOI form (bare or doi.org URL)
+      const doi = value.match(/(?:doi\.org\/)?(10\.\d{4,9}\/[^?\s#]+)/i);
+      if (doi) {
+        out.push({
+          patternId: "doi",
+          category: "citation",
+          label: `microdata ${prop}`,
+          text: doi[1]!,
+          start: 0,
+          end: doi[1]!.length,
+          originalLength: doi[1]!.length,
+          priority: 0,
+          source: "microdata",
+          confidence: 0.85,
+        });
+        continue;
+      }
+      // arXiv form (URL or prefix)
+      const arxiv = value.match(
+        /(?:arxiv\.org\/(?:abs|pdf)\/|arXiv:\s*)(\d{4}\.\d{4,5}(?:v\d+)?)/i
+      );
+      if (arxiv) {
+        out.push({
+          patternId: "arxiv.id",
+          category: "citation",
+          label: `microdata ${prop}`,
+          text: arxiv[1]!,
+          start: 0,
+          end: arxiv[1]!.length,
+          originalLength: arxiv[1]!.length,
+          priority: 0,
+          source: "microdata",
+          confidence: 0.85,
+        });
+      }
+    }
+  });
+  return out;
 }

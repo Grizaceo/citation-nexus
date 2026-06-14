@@ -3,7 +3,7 @@ import {
   applyPatterns,
   PatternRegistry,
 } from "@/patterns/registry";
-import { scanMetaTags, scanCanonicalLink, scanJsonLd, scanOpenGraph } from "@/patterns/sources";
+import { scanMetaTags, scanCanonicalLink, scanJsonLd, scanOpenGraph, scanMicrodata } from "@/patterns/sources";
 import { citationsSet } from "@/patterns/sets/citations";
 
 function reg(): PatternRegistry {
@@ -408,5 +408,127 @@ describe("scanOpenGraph", () => {
     desc.setAttribute("content", "Discusses arXiv:2401.01234");
     document.head.append(desc);
     expect(scanOpenGraph(document)).toHaveLength(0);
+  });
+});
+
+describe("scanMicrodata", () => {
+  it("extracts DOI from itemprop=identifier inside ScholarlyArticle", () => {
+    document.body.innerHTML = `
+      <div itemscope itemtype="https://schema.org/ScholarlyArticle">
+        <span itemprop="name">A paper about something</span>
+        <span itemprop="identifier">10.1038/nature12373</span>
+      </div>`;
+    const findings = scanMicrodata(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.patternId).toBe("doi");
+    expect(findings[0]!.text).toBe("10.1038/nature12373");
+    expect(findings[0]!.source).toBe("microdata");
+    expect(findings[0]!.confidence).toBe(0.85);
+  });
+
+  it("extracts arXiv ID (prefix form) from itemprop=identifier", () => {
+    document.body.innerHTML = `
+      <div itemscope itemtype="https://schema.org/ScholarlyArticle">
+        <span itemprop="identifier">arXiv:2401.01234</span>
+      </div>`;
+    const findings = scanMicrodata(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.patternId).toBe("arxiv.id");
+    expect(findings[0]!.text).toBe("2401.01234");
+  });
+
+  it("extracts arXiv ID (URL form) from itemprop=sameAs", () => {
+    document.body.innerHTML = `
+      <div itemscope itemtype="https://schema.org/ScholarlyArticle">
+        <a itemprop="sameAs" href="https://arxiv.org/abs/2401.01234">arXiv</a>
+      </div>`;
+    const findings = scanMicrodata(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.text).toBe("2401.01234");
+  });
+
+  it("extracts DOI from itemprop=doi (explicit name)", () => {
+    document.body.innerHTML = `
+      <div itemscope itemtype="https://schema.org/ScholarlyArticle">
+        <span itemprop="doi">10.1186/s13613-024-01277-3</span>
+      </div>`;
+    const findings = scanMicrodata(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.text).toBe("10.1186/s13613-024-01277-3");
+  });
+
+  it("ignores itemprop on Person / Organization (wrong itemtype)", () => {
+    document.body.innerHTML = `
+      <div itemscope itemtype="https://schema.org/Person">
+        <span itemprop="identifier">10.1038/nature12373</span>
+      </div>
+      <div itemscope itemtype="https://schema.org/Organization">
+        <span itemprop="identifier">arXiv:2401.01234</span>
+      </div>`;
+    expect(scanMicrodata(document)).toHaveLength(0);
+  });
+
+  it("ignores itemprop without a parent itemscope (loose usage)", () => {
+    document.body.innerHTML = `
+      <div>
+        <span itemprop="identifier">10.1038/nature12373</span>
+      </div>`;
+    expect(scanMicrodata(document)).toHaveLength(0);
+  });
+
+  it("extracts multiple identifiers from the same itemscope", () => {
+    document.body.innerHTML = `
+      <div itemscope itemtype="https://schema.org/ScholarlyArticle">
+        <span itemprop="identifier">10.1038/nature12373</span>
+        <span itemprop="identifier">arXiv:2401.01234</span>
+      </div>`;
+    const findings = scanMicrodata(document);
+    expect(findings).toHaveLength(2);
+    expect(findings.map(f => f.text).sort()).toEqual([
+      "10.1038/nature12373",
+      "2401.01234",
+    ]);
+  });
+
+  it("accepts bare itemscope with no itemtype (defensive)", () => {
+    // Some pages forget to set itemtype. We accept the finding
+    // rather than reject it — the user can decide if it's a
+    // real citation.
+    document.body.innerHTML = `
+      <div itemscope>
+        <span itemprop="identifier">10.1038/nature12373</span>
+      </div>`;
+    const findings = scanMicrodata(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.text).toBe("10.1038/nature12373");
+  });
+
+  it("ignores non-identifier/doi/sameAs/url itemprops", () => {
+    document.body.innerHTML = `
+      <div itemscope itemtype="https://schema.org/ScholarlyArticle">
+        <span itemprop="name">Some paper title</span>
+        <span itemprop="author">A. Author</span>
+        <span itemprop="datePublished">2024</span>
+      </div>`;
+    expect(scanMicrodata(document)).toHaveLength(0);
+  });
+
+  it("scopes queries per itemscope (no cross-contamination)", () => {
+    // Two adjacent ScholarlyArticle blocks; each gets its own
+    // identifier. The function must not "leak" identifiers
+    // between blocks.
+    document.body.innerHTML = `
+      <div itemscope itemtype="https://schema.org/ScholarlyArticle">
+        <span itemprop="identifier">10.1038/paper-a</span>
+      </div>
+      <div itemscope itemtype="https://schema.org/ScholarlyArticle">
+        <span itemprop="identifier">10.1038/paper-b</span>
+      </div>`;
+    const findings = scanMicrodata(document);
+    expect(findings).toHaveLength(2);
+    expect(findings.map(f => f.text).sort()).toEqual([
+      "10.1038/paper-a",
+      "10.1038/paper-b",
+    ]);
   });
 });
