@@ -23,13 +23,13 @@ import {
   MSG,
   bridge,
   PAUSED_KEY,
-  KEYWORDS_KEY,
   EMBEDDINGS_ENABLED_KEY,
   AUTO_RESCAN_COOLDOWN_MS,
   type TabState,
   state,
 } from "./state";
 import { setSub, paintPopup } from "./render";
+import "./keywords";
 
 async function loadTab(): Promise<void> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -78,42 +78,6 @@ document.getElementById("nx-rescan")?.addEventListener("click", async () => {
 document.getElementById("nx-options")?.addEventListener("click", () => {
   chrome.runtime.openOptionsPage();
 });
-
-// ── Show keywords toggle ──────────────────────────────────────
-// Same pattern as the pause toggle. The content script listens
-// to the same key and re-scans on change, so the toggle takes
-// effect immediately on every active tab.
-let showKeywords = false;
-const keywordsCheckbox = document.getElementById(
-  "nx-keywords"
-) as HTMLInputElement | null;
-
-function paintKeywords(): void {
-  if (keywordsCheckbox) keywordsCheckbox.checked = showKeywords;
-}
-
-async function loadKeywordsState(): Promise<void> {
-  const stored = await chrome.storage.local.get(KEYWORDS_KEY);
-  showKeywords = stored[KEYWORDS_KEY] === true;
-  paintKeywords();
-}
-
-keywordsCheckbox?.addEventListener("change", async () => {
-  showKeywords = keywordsCheckbox.checked;
-  await chrome.storage.local.set({ [KEYWORDS_KEY]: showKeywords });
-});
-
-// Re-render the toggle if another context (DevTools, the
-// content script itself) changes the key.
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== "local") return;
-  if (KEYWORDS_KEY in changes) {
-    showKeywords = changes[KEYWORDS_KEY].newValue === true;
-    paintKeywords();
-  }
-});
-
-void loadKeywordsState();
 
 // ── Embeddings opt-in toggle ──────────────────────────────────
 // The embeddings section is hidden by default (see the
