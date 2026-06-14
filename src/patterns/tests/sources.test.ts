@@ -532,3 +532,40 @@ describe("scanMicrodata", () => {
     ]);
   });
 });
+
+describe("scanMetaTags — Dublin Core", () => {
+  it("extracts DOI from DC.identifier (bare)", () => {
+    const meta = document.createElement("meta");
+    meta.setAttribute("name", "DC.identifier");
+    meta.setAttribute("content", "10.1038/nature12373");
+    document.head.append(meta);
+    const findings = scanMetaTags(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.patternId).toBe("dc.identifier");
+    expect(findings[0]!.text).toBe("10.1038/nature12373");
+    expect(findings[0]!.source).toBe("meta");
+    expect(findings[0]!.confidence).toBe(1.0);
+  });
+
+  it("extracts DOI from DC.identifier (with doi: prefix)", () => {
+    const meta = document.createElement("meta");
+    meta.setAttribute("name", "DC.identifier");
+    meta.setAttribute("content", "doi:10.1186/s13613-024-01277-3");
+    document.head.append(meta);
+    const findings = scanMetaTags(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.text).toBe("doi:10.1186/s13613-024-01277-3");
+  });
+
+  it("ignores other DC.* tags (DC.title, DC.creator, ...)", () => {
+    const title = document.createElement("meta");
+    title.setAttribute("name", "DC.title");
+    title.setAttribute("content", "Some paper");
+    document.head.append(title);
+    const creator = document.createElement("meta");
+    creator.setAttribute("name", "DC.creator");
+    creator.setAttribute("content", "Smith, J.");
+    document.head.append(creator);
+    expect(scanMetaTags(document)).toHaveLength(0);
+  });
+});

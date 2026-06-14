@@ -173,6 +173,44 @@ export function getDownloadInfo(finding: Finding): DownloadInfo | null {
         format: "pdf",
       };
     }
+    case "dc.identifier": {
+      // Dublin Core DC.identifier can hold anything — a DOI
+      // (bare or with doi: prefix or doi.org URL), an arXiv
+      // ID (prefix or URL), a JSTOR stable URL, an OCLC
+      // number, or just a permalink. We try the citation-style
+      // forms first; anything we can't classify is rejected
+      // rather than guessed. Legacy / institutional repositories
+      // that predate the Highwire convention (option E from
+      // the 2026-06-13 audit) use this to carry DOIs.
+      const raw = finding.text.trim();
+      // DOI form (doi: prefix, bare, or doi.org URL)
+      const doi = raw.match(/(?:doi:\s*|doi\.org\/)?(10\.\d{4,9}\/[^?\s#]+)/i);
+      if (doi) {
+        const doiSlug = sanitizeFilename(doi[1]!, "doi");
+        if (!doiSlug) return null;
+        return {
+          url: `https://doi.org/${doi[1]!}`,
+          category: "citation",
+          filename: doiSlug,
+          format: "html",
+        };
+      }
+      // arXiv form (URL or prefix)
+      const arxiv = raw.match(
+        /(?:arxiv\.org\/(?:abs|pdf)\/|arXiv:\s*)(\d{4}\.\d{4,5}(?:v\d+)?)/i
+      );
+      if (arxiv) {
+        const filename = sanitizeFilename(arxiv[1]!, "arxiv");
+        if (!filename) return null;
+        return {
+          url: `https://arxiv.org/pdf/${arxiv[1]!}`,
+          category: "citation",
+          filename,
+          format: "pdf",
+        };
+      }
+      return null;
+    }
     case "github":
       // v1: not supported. Needs clone URL parsing + zip download.
       return null;

@@ -68,26 +68,47 @@ const META_TAG_MAP: Record<string, { patternId: string; extract: (raw: string) =
     patternId: "pdf_url",
     extract: (raw) => raw.trim(),
   },
+  // Dublin Core (DC.*) meta tags. Legacy / institutional
+  // repositories that predate the Highwire convention often
+  // use DC.identifier to carry a DOI or URL. We extract the
+  // DOI/arxiv value from the DC.identifier content. Other
+  // DC.* tags (DC.title, DC.creator, ...) are not relevant
+  // to citation download paths and are not mapped.
+  dc_identifier: {
+    patternId: "dc.identifier",
+    extract: (raw) => raw.trim(),
+  },
 };
 
-/** Walk for <meta name="citation_*"> tags and emit findings. */
+/** Walk for <meta name="citation_*"> and <meta name="DC.*"> tags
+ *  and emit findings. The Highwire / Google Scholar convention
+ *  (citation_*) is the primary standard; Dublin Core (DC.*)
+ *  is the older academic-repository standard, still in use on
+ *  legacy institutional pages. */
 export function scanMetaTags(root: Node): PureFinding[] {
   const out: PureFinding[] = [];
-  // Find every <meta name="citation_*"> in the tree. Use a deep
-  // tree walk that includes element nodes so we don't depend on
-  // selector engines (cheap enough for the typical page).
+  // Find every <meta name="citation_*"> or <meta name="DC.*">
+  // in the tree. Use a deep tree walk that includes element
+  // nodes so we don't depend on selector engines (cheap enough
+  // for the typical page).
   const metas: HTMLMetaElement[] = [];
   walkElements(root, (el) => {
-    if (
-      el.tagName === "META" &&
-      (el as HTMLMetaElement).name?.startsWith("citation_")
-    ) {
+    if (el.tagName !== "META") return;
+    const name = (el as HTMLMetaElement).name ?? "";
+    // case-insensitive check for citation_* OR DC.* (Dublin Core)
+    const lower = name.toLowerCase();
+    if (lower.startsWith("citation_") || lower.startsWith("dc.")) {
       metas.push(el as HTMLMetaElement);
     }
   });
   for (const meta of metas) {
     const name = meta.name;
-    const mapper = META_TAG_MAP[name];
+    // Look up the mapper case-insensitively, normalizing the
+    // `.` to `_` so Dublin Core meta names (e.g. "DC.identifier")
+    // match the same shape as the Highwire keys (e.g. "citation_doi"
+    // where the key uses `_` for the same delimiter).
+    const normalized = name.toLowerCase().replace(/\./g, "_");
+    const mapper = META_TAG_MAP[normalized];
     if (!mapper) continue;
     const content = meta.content ?? "";
     const text = mapper.extract(content);

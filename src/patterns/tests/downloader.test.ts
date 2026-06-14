@@ -271,3 +271,68 @@ describe("planBatch", () => {
     expect(plan.skipped).toEqual([]);
   });
 });
+
+describe("getDownloadInfo — Dublin Core", () => {
+  it("dc.identifier with bare DOI -> doi.org redirect", () => {
+    const f = mkFinding({
+      patternId: "dc.identifier",
+      text: "10.1038/nature12373",
+      source: "meta",
+      confidence: 1.0,
+    });
+    const info = getDownloadInfo(f);
+    expect(info).not.toBe(null);
+    expect(info!.url).toBe("https://doi.org/10.1038/nature12373");
+    expect(info!.format).toBe("html");
+  });
+
+  it("dc.identifier with 'doi:' prefix DOI -> doi.org redirect", () => {
+    const f = mkFinding({
+      patternId: "dc.identifier",
+      text: "doi:10.1186/s13613-024-01277-3",
+      source: "meta",
+      confidence: 1.0,
+    });
+    const info = getDownloadInfo(f);
+    expect(info).not.toBe(null);
+    expect(info!.url).toBe("https://doi.org/10.1186/s13613-024-01277-3");
+  });
+
+  it("dc.identifier with doi.org URL -> doi.org (URL preserved)", () => {
+    const f = mkFinding({
+      patternId: "dc.identifier",
+      text: "https://doi.org/10.1038/nature12373",
+      source: "meta",
+      confidence: 1.0,
+    });
+    const info = getDownloadInfo(f);
+    expect(info).not.toBe(null);
+    expect(info!.url).toBe("https://doi.org/10.1038/nature12373");
+  });
+
+  it("dc.identifier with arXiv prefix -> arxiv.org/pdf", () => {
+    const f = mkFinding({
+      patternId: "dc.identifier",
+      text: "arXiv:2401.01234",
+      source: "meta",
+      confidence: 1.0,
+    });
+    const info = getDownloadInfo(f);
+    expect(info).not.toBe(null);
+    expect(info!.url).toBe("https://arxiv.org/pdf/2401.01234");
+    expect(info!.format).toBe("pdf");
+  });
+
+  it("dc.identifier with non-citation value returns null", () => {
+    // JSTOR stable URL, OCLC number, plain permalink — none of
+    // these are citations in the citation-nexus sense. We
+    // return null rather than guess.
+    const f = mkFinding({
+      patternId: "dc.identifier",
+      text: "https://www.jstor.org/stable/12345",
+      source: "meta",
+      confidence: 1.0,
+    });
+    expect(getDownloadInfo(f)).toBe(null);
+  });
+});
