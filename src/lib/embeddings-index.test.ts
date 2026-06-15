@@ -148,3 +148,36 @@ describe("findSimilar", () => {
     expect(findSimilar(query, [], 5)).toEqual([]);
   });
 });
+
+/** Smoke test against the actual pre-computed index file. The
+ * precompute script writes to `public/assets/embeddings-index.json`;
+ * WXT copies it to `.output/chrome-mv3/assets/embeddings-index.json`
+ * at build time. We load the source file here (the build artifact
+ * may not exist in dev) and assert the shape that the runtime
+ * `loadIndex()` produces. This catches drift between the
+ * precompute output schema and the runtime consumer. */
+describe("embeddings-index.json (committed file)", () => {
+  it("exists, is well-formed, and has the schema the runtime expects", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const REPO = path.resolve(__dirname, "..", "..");
+    const FILE = path.join(REPO, "public", "assets", "embeddings-index.json");
+    const text = await fs.readFile(FILE, "utf-8");
+    const json = JSON.parse(text);
+    expect(json.model).toBe("Xenova/paraphrase-multilingual-MiniLM-L12-v2");
+    expect(json.dimensions).toBe(384);
+    expect(Array.isArray(json.items)).toBe(true);
+    expect(json.items.length).toBeGreaterThan(50);
+    // Spot-check a few items
+    for (const it of json.items.slice(0, 5)) {
+      expect(typeof it.keyword).toBe("string");
+      expect(Array.isArray(it.vector)).toBe(true);
+      expect(it.vector.length).toBe(384);
+      // All entries should be L2-normalized (unit length).
+      const norm = Math.sqrt(
+        it.vector.reduce((s: number, v: number) => s + v * v, 0)
+      );
+      expect(norm).toBeCloseTo(1, 2);
+    }
+  });
+});
