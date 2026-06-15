@@ -27,9 +27,9 @@
 
 import {
   loadModel as loadEmbeddingModel,
-  embedText as probeEmbed,
   type ModelStatus,
 } from "@/lib/embeddings/dev_tools";
+import { findSimilarAsync } from "@/lib/embeddings-index";
 import { listAvailableModels, type ModelId } from "@/lib/embeddings/models";
 import { MSG, bridge, EMBEDDINGS_ENABLED_KEY } from "./state";
 
@@ -174,28 +174,61 @@ async function runEmbedSearch(): Promise<void> {
     EMBED_RESULTS.replaceChildren();
     return;
   }
-  // Step 1: get the embedding for the query text.
-  const probe = await probeEmbed(bridge, text);
-  if (!probe.ok || !probe.vectorLength) {
+  // Step 1: ask the background to embed the query text. We use
+  // EMBED_FIND_SIMILAR (not the diagnostic probeEmbed) because
+  // we need the full vector back to do the topK locally — the
+  // background serializes the Float32Array as a number[].
+  const res = (await bridge.sendMessage({
+    type: MSG.EMBED_FIND_SIMILAR,
+    payload: { text, modelId: "multilingual" },
+  })) as
+    | { ok?: boolean; error?: string; data?: { vector?: number[] } }
+    | undefined;
+  if (!res?.ok) {
     const empty = document.createElement("div");
     empty.className = "nx-embeddings-empty";
-    empty.textContent = `Error: ${probe.error ?? "no embedding"}`;
+    empty.textContent = `Error: ${res?.error ?? "no embedding"}`;
     EMBED_RESULTS.replaceChildren(empty);
     return;
   }
-  // Step 2: load the pre-computed index (lazy, cached after first
-  // call) and do topK. We don't have the actual vector here
-  // because the bridge doesn't echo it back; for the search
-  // path we need a dedicated MSG that returns the vector. The
-  // current MSG.EMBED_FIND_SIMILAR returns the vector — but
-  // findSimilarAsync in embeddings-index.ts expects a Float32Array.
-  // For v1 we ship a "probe embed" path that returns length+head
-  // for diagnostics, and a separate vector path for search.
-  // v2: unify the two. For now, the search box shows the
-  // embedding head (first 8 components) as a sanity check.
-  const empty = document.createElement("div");
-  empty.className = "nx-embeddings-empty";
-  empty.textContent = `embedded "${text}" → ${probe.vectorLength} dims ` +
-    `(head: ${probe.vectorHead?.map((n) => n.toFixed(3)).join(", ") ?? "n/a"})`;
-  EMBED_RESULTS.replaceChildren(empty);
+  const vec = res.data?.vector;
+  if (!vec) {
+    const empty = document.createElement("div");
+    empty.className = "nx-embeddings-empty";
+    empty.textContent = "Error: no vector in response";
+    EMBED_RESULTS.replaceChildren(empty);
+    return;
+  }
+  // Step 2: load the pre-computed index (lazy, cached after the
+  // first call) and do topK against it. The index is committed
+  // to public/assets/embeddings-index.json and copied to
+  // .output/chrome-mv3/assets/ at build time.
+  let entries: Awaited<ReturnType<typeof findSimilarAsync>>;
+  try {
+    entries = await findSimilarAsync(new Float32Array(vec), 5);
+  } catch (e) {
+    const empty = document.createElement("div");
+    empty.className = "nx-embeddings-empty";
+    empty.textContent = `Error: ${e instanceof Error ? e.message : String(e)}`;
+    EMBED_RESULTS.replaceChildren(empty);
+    return;
+  }
+  if (entries.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "nx-embeddings-empty";
+    empty.textContent = `No similar keywords for "${text}"`;
+    EMBED_RESULTS.replaceChildren(empty);
+    return;
+  }
+  // Render the top 5 as a list. Each row: keyword + similarity
+  // score (3 decimals). The CSS class hooks the result list into
+  // the existing dark-theme styles in style.css.
+  const list = document.createElement("ul");
+  list.className = "nx-embeddings-results-list";
+  for (const e of entries) {
+    const li = document.createElement("li");
+    li.textContent = `${e.keyword} (${e.similarity.toFixed(3)})`;
+    list.append(li);
+  }
+  EMBED_RESULTS.replaceChildren(list);
 }

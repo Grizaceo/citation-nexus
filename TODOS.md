@@ -69,11 +69,15 @@ section are higher priority.
   Word-level vectors; useful for matching by single token
   rather than full sentence. Low priority — current
   `findSimilar` works fine for the goldset.
-- [ ] **Embedding result dedup at the popup level** **Priority:** P3
-  `runEmbedSearch` currently shows the embedding's head
-  (first 8 components) as a "did it work?" diagnostic. A
-  real topK display against the pre-computed index would be
-  more useful. The findSimilarAsync plumbing exists.
+- [x] **Embedding result dedup at the popup level** **Completed:** v0.2.0.1
+  `runEmbedSearch` in popup/embeddings.ts now calls
+  `findSimilarAsync` against the pre-computed
+  `public/assets/embeddings-index.json` and renders a top-5 list
+  with cosine scores. Pre-2.0.1 the search box only showed the
+  embedding's head (first 8 components) as a "did it work?"
+  diagnostic. The smoke test in
+  `src/lib/embeddings-index.test.ts` validates the committed
+  index file's schema on every CI run.
 
 ## build / infra
 
