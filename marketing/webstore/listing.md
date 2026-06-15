@@ -86,10 +86,12 @@ extension can install it from the Options page.
 **Open source**
 
 MIT licensed. Source, tests, and the eval harness live at
-https://github.com/Grizaceo/citation-nexus. The ~1000-case
-goldset (F1=1.000 on the current 24 patterns) is in the
-repo — if you find a publisher that breaks a pattern, open
-an issue with the goldset diff.
+https://github.com/Grizaceo/citation-nexus. The ~360-case
+goldset (F1=1.000 on the current 24 patterns — 124
+citation cases + 232 science cases, hand-curated positives
+and lookalike negatives) is in the repo — if you find a
+publisher that breaks a pattern, open an issue with the
+goldset diff.
 
 ## Category
 
