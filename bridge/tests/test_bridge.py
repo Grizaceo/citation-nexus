@@ -59,15 +59,31 @@ def test_import_writes_file(client, tmp_path, monkeypatch):
 def test_pattern_sets_match_ts():
     """Sanity check that the bridge pattern set ids are present in the TS sets."""
     src = ROOT / "src" / "patterns" / "sets"
+    # Set ids declared in the PatternSet top-level objects
+    # (e.g. `id: "citations"` on the set, not on a pattern). We
+    # exclude these so the parser only collects pattern ids. The
+    # set ids are stable across the project's lifetime; adding a
+    # new set would be a deliberate architectural change.
+    SET_IDS = {"citations", "science"}
     ts_ids: set[str] = set()
     for ts_file in src.glob("*.ts"):
         text = ts_file.read_text()
         for line in text.splitlines():
             line = line.strip()
             if line.startswith("id:"):
-                ts_ids.add(line.split('"')[1])
+                pid = line.split('"')[1]
+                if pid in SET_IDS:
+                    continue
+                ts_ids.add(pid)
     bridge_ids: set[str] = set()
     for s in server.PATTERN_SETS:
         bridge_ids.update(s["patterns"])
     missing_in_ts = bridge_ids - ts_ids
     assert not missing_in_ts, f"patterns referenced by bridge but missing in TS: {missing_in_ts}"
+    # Reverse direction: every pattern declared in a TS set must also
+    # be mirrored in the bridge's PATTERN_SETS. Catches the case where
+    # a contributor adds a new pattern to src/patterns/sets/*.ts and
+    # forgets to update bridge/nexus_bridge/server.py — the old
+    # one-way check would silently let that drift through.
+    missing_in_bridge = ts_ids - bridge_ids
+    assert not missing_in_bridge, f"patterns in TS but missing in bridge: {missing_in_bridge}"
