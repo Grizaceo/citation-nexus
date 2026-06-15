@@ -1,15 +1,16 @@
 // Citation Nexus — Embedding model registry
 //
 // Metadata for the ONNX-quantized sentence-transformer models the
-// extension knows about. The actual model files are bundled in the
-// extension as static assets (Option A — offline-ready, no first-run
-// download). The background script lazy-loads them on demand when
-// the user picks one from the popup's "Embeddings" dropdown.
+// extension knows about. The actual model files are downloaded
+// from the HuggingFace CDN at first use and cached by Chrome; the
+// background script lazy-loads them on demand when the user picks
+// one from the popup's "Embeddings" dropdown.
 //
-// Each entry mirrors a Xenova/HuggingFace ONNX-quantized model. The
-// `url` is a chrome.runtime.getURL() relative path (resolved at
-// load time) — the model files live under .output/chrome-mv3/
-// after `npm run build`.
+// v2 may ship models as bundled assets (under public/assets/models/
+// so WXT copies them into .output/ at build time). When that
+// happens, add an `onnxPath: string` field here and a
+// `staticOnly: true` switch that the background reads to decide
+// between remote fetch and chrome.runtime.getURL lookup.
 
 export type ModelId = "multilingual" | "scholar" | "keywords";
 
@@ -26,8 +27,6 @@ export interface ModelMeta {
   languages: string[];
   /** Free-text description for the options UI. */
   description: string;
-  /** chrome.runtime.getURL() relative path to the ONNX folder. */
-  onnxPath: string;
 }
 
 /**
@@ -53,10 +52,6 @@ export const MODELS: Record<ModelId, ModelMeta | null> = {
     description:
       "paraphrase-multilingual-MiniLM-L12-v2, int8 quantized. " +
       "Good for keywords and short phrases in 50+ languages.",
-    // Model is bundled as a static asset. After `npm run build`,
-    // it lives under .output/chrome-mv3/assets/models/multilingual/
-    // The exact path is configured in wxt.config.ts.
-    onnxPath: "assets/models/multilingual/",
   },
   // v2 — academic-specific SPECTER2. ~110MB int8, EN only.
   scholar: null,
