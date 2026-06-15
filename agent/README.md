@@ -32,8 +32,12 @@ Chrome can route messages to a small Python host binary:
 
 1. Copy `agent/native_host.py` to `~/.local/bin/nexus-host` and make it
    executable: `chmod +x ~/.local/bin/nexus-host`.
-2. Edit `agent/manifest.json` — replace `REPLACE_WITH_EXTENSION_ID` with the
-   real ID shown in `chrome://extensions`.
+2. Edit `agent/manifest.json` — replace two placeholders:
+   - `REPLACE_WITH_EXTENSION_ID` with the real ID shown in
+     `chrome://extensions`
+   - `/home/<USER>/.local/bin/nexus-host` with the absolute path
+     where you copied the host binary (e.g.
+     `/home/alice/.local/bin/nexus-host`)
 3. Install the manifest where Chrome looks for it:
 
    ```bash
