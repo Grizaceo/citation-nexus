@@ -139,6 +139,55 @@ describe("dedupeFindings", () => {
     expect(g[0]!.mentionCount).toBe(6);
   });
 
+  it("merges arXiv mentions with and without version suffix", () => {
+    // The real-world regression on arXiv abstract pages: the
+    // meta tag `citation_arxiv_id` typically has the bare ID
+    // (no version), while text-body matches often include the
+    // version (`arXiv:2401.01234v3`). The arxiv.id regex
+    // captures the digits-only part, so the finding.text for
+    // the text-body match is `2401.01234v3` (the prefix
+    // `arXiv:` is not captured). Without the v-strip these
+    // would be two separate groups; with the v-strip they
+    // collapse.
+    const metaF = f({
+      category: "citation",
+      patternId: "arxiv.id",
+      text: "2401.01234",
+      source: "meta",
+      confidence: 1.0,
+    });
+    const textF = f({
+      category: "citation",
+      patternId: "arxiv.id",
+      text: "2401.01234v3",
+      source: "text",
+      confidence: 0.7,
+    });
+    const textF2 = f({
+      category: "citation",
+      patternId: "arxiv.id",
+      text: "2401.01234v7",
+      source: "text",
+      confidence: 0.7,
+    });
+    const g = dedupeFindings([metaF, textF, textF2]);
+    expect(g).toHaveLength(1);
+    expect(g[0]!.mentionCount).toBe(3);
+    // Meta tag wins as rep (highest rank).
+    expect(g[0]!.representative).toBe(metaF);
+  });
+
+  it("does NOT strip v-suffix from non-arXiv patterns", () => {
+    // DOIs and PMIDs don't use the v<N> suffix, so the strip is
+    // a no-op. This test pins the contract: if a future pattern
+    // ever starts producing v<N>-shaped text and we don't want
+    // it stripped, we'd add an explicit allowlist here.
+    const a = f({ category: "citation", text: "10.1234/v1" });
+    const b = f({ category: "citation", text: "10.1234" });
+    const g = dedupeFindings([a, b]);
+    expect(g).toHaveLength(2);
+  });
+
   it("orders groups by category then by first appearance", () => {
     // math comes alphabetically before physics.
     const math = f({

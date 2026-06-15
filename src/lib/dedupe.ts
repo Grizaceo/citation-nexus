@@ -64,9 +64,20 @@ function rankFor(f: Finding): number {
 }
 
 /** Normalize text for the dedup key. Lowercase + trim + collapse
- *  internal whitespace runs to a single space. */
+ *  internal whitespace runs to a single space. Also strip a
+ *  trailing arXiv-style version suffix (`v2`, `vN`) so the
+ *  meta-tag capture (often without version) and the text-body
+ *  capture (often with `vN`) collapse to the same group. The
+ *  strip is gated on the preceding character being a digit —
+ *  arXiv IDs always end in a digit before the version, so this
+ *  is precise for the intended target and avoids accidentally
+ *  mangling words like `lev1` or `rev2` that happen to end in
+ *  `v<digit>`. Safe for other patterns: DOIs / PMIDs / GitHub
+ *  URLs don't use the `v<digits>` suffix, so the strip is a
+ *  no-op on them. */
 function normalize(text: string): string {
-  return text.toLowerCase().replace(/\s+/g, " ").trim();
+  const base = text.toLowerCase().replace(/\s+/g, " ").trim();
+  return base.replace(/(\d)v\d+$/, "$1");
 }
 
 /** Group findings by (category, normalizedText). Within each group
