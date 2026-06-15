@@ -76,9 +76,10 @@ export const AUTO_RESCAN_COOLDOWN_MS = 30_000;
 export const state = {
   currentTabId: undefined as number | undefined,
   // Used by render.ts to skip the heavy DOM rebuild when the
-  // count hasn't changed (avoid losing focus / scroll on a
-  // noisy poll). Bypassed to -1 to force a refresh.
+  // deduped (unique) count hasn't changed AND the raw mention
+  // count hasn't changed. Bypassed to -1 to force a refresh.
   lastFindingsCount: -1 as number,
+  lastMentionsCount: -1 as number,
   pollHandle: undefined as number | undefined,
   lastAutoRescanAt: 0 as number,
 };

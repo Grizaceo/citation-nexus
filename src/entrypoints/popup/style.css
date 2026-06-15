@@ -413,6 +413,27 @@ body {
   text-overflow: ellipsis;
   font-weight: 500;
 }
+
+/* Mention-count badge: rendered inline next to the finding text
+ * when the popup's dedup collapsed N mentions of the same paper /
+ * concept into one row. Same color family as the status dot so
+ * it reads as "this is a number" without competing with the
+ * finding text. The tooltip explains what the × N means. */
+.nx-mention-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 6px;
+  background: rgba(0, 200, 83, 0.18);
+  color: #5fcf6a;
+  border: 1px solid rgba(0, 200, 83, 0.35);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  flex-shrink: 0;
+  cursor: help;
+}
 .nx-finding-actions {
   display: flex;
   gap: 3px;

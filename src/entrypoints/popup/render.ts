@@ -14,8 +14,20 @@
 // The download/save flow lives here because the row is the only
 // place that renders the action button. The pop-up-level "Rescan"
 // / "Options" wiring stays in main.ts.
+//
+// Dedup note: when a paper is cited multiple times on the page
+// (e.g. in the abstract + intro + bibliography), the scanner
+// produces N findings with the same `text`. Rendering each as
+// its own row would give the user N identical "Open" buttons
+// that all go to the same URL. paintPopup dedupes the raw
+// findings into FindingGroups (one per unique paper/concept)
+// and renders one row per group with a "× N" badge for the
+// suppressed copies. The highlighter in the content script
+// still wraps every match in the page, so the user sees the N
+// mentions on the page — only the popup's row count collapses.
 
 import { getDownloadUrl } from "@/lib/download";
+import { dedupeFindings, type FindingGroup } from "@/lib/dedupe";
 import { getDownloadInfo } from "@/patterns/downloader";
 import type { Finding } from "@/patterns/core";
 import { MSG, state, type TabState } from "./state";
@@ -28,49 +40,83 @@ export function setSub(text: string): void {
 }
 
 /** Paint the popup's main view: total stat, category chips, and the
- *  per-finding list. Skipped if the count is unchanged from the
- *  last paint to avoid losing focus / scroll on a noisy poll. */
+ *  per-finding list. Skipped if BOTH the unique and the raw
+ *  mention counts are unchanged from the last paint, to avoid
+ *  losing focus / scroll on a noisy poll. */
 export function paintPopup(tabState: TabState): void {
   const findings = tabState.findings ?? [];
+  const groups = dedupeFindings(findings);
+
   setSub(tabState.title || tabState.url || "Active tab");
 
-  document.getElementById("nx-stat-total")!.textContent = String(findings.length);
-
-  // Same count as before? Skip the heavy DOM rebuild to avoid
-  // losing focus / scroll on a noisy poll.
-  if (findings.length === state.lastFindingsCount) return;
-  state.lastFindingsCount = findings.length;
-
-  // ── Category chips ──────────────────────────────────────────
-  const counts = new Map<string, number>();
-  for (const f of findings) counts.set(f.category, (counts.get(f.category) ?? 0) + 1);
-
-  const catEl = document.getElementById("nx-categories")!;
-  catEl.replaceChildren();
-  for (const [cat, n] of counts) {
-    const chip = document.createElement("span");
-    chip.className = "nx-cat-chip";
-    chip.dataset.cat = cat;
-    const dot = document.createElement("span");
-    dot.className = "nx-dot";
-    chip.append(dot, ` ${cat} · ${n}`);
-    catEl.append(chip);
+  const totalEl = document.getElementById("nx-stat-total");
+  const labelEl = document.querySelector(".nx-stat-label");
+  if (totalEl) {
+    totalEl.textContent = String(groups.length);
+  }
+  if (labelEl) {
+    // When dedup actually collapsed rows, show both the unique
+    // count and the raw mention count so the user can see how
+    // many duplicates the dedup hid. When there's nothing to
+    // dedup, just say "unique".
+    labelEl.textContent =
+      groups.length < findings.length
+        ? `unique · ${findings.length} mentions`
+        : "unique";
   }
 
-  // ── Findings list (interactive) ─────────────────────────────
-  const listEl = document.getElementById("nx-findings")!;
-  listEl.replaceChildren();
-  for (const f of findings) {
-    listEl.append(renderFindingRow(f));
+  // Same-count optimization: skip the heavy DOM rebuild if
+  // neither the unique count nor the raw mention count changed.
+  if (
+    groups.length === state.lastFindingsCount &&
+    findings.length === state.lastMentionsCount
+  ) {
+    return;
+  }
+  state.lastFindingsCount = groups.length;
+  state.lastMentionsCount = findings.length;
+
+  // ── Category chips ─────────────────────────────────────────
+  const counts = new Map<string, number>();
+  for (const g of groups) {
+    counts.set(
+      g.representative.category,
+      (counts.get(g.representative.category) ?? 0) + 1
+    );
+  }
+
+  const catEl = document.getElementById("nx-categories");
+  if (catEl) {
+    catEl.replaceChildren();
+    for (const [cat, n] of counts) {
+      const chip = document.createElement("span");
+      chip.className = "nx-cat-chip";
+      chip.dataset.cat = cat;
+      const dot = document.createElement("span");
+      dot.className = "nx-dot";
+      chip.append(dot, ` ${cat} · ${n}`);
+      catEl.append(chip);
+    }
+  }
+
+  // ── Findings list (interactive) ────────────────────────────
+  const listEl = document.getElementById("nx-findings");
+  if (listEl) {
+    listEl.replaceChildren();
+    for (const g of groups) {
+      listEl.append(renderFindingRow(g));
+    }
   }
 }
 
-function renderFindingRow(f: Finding): HTMLElement {
+function renderFindingRow(group: FindingGroup): HTMLElement {
+  const f = group.representative;
   const row = document.createElement("div");
   row.className = "nx-finding";
   row.dataset.cat = f.category;
 
-  // Main text: the matched span (clipped to 80 chars for layout).
+  // Main text: the matched span (clipped to 80 chars for layout)
+  // + a small "× N" badge when the dedup collapsed mentions.
   const main = document.createElement("div");
   main.className = "nx-finding-main";
   const id = document.createElement("span");
@@ -80,8 +126,18 @@ function renderFindingRow(f: Finding): HTMLElement {
   text.className = "nx-finding-text";
   text.textContent = f.text.length > 80 ? f.text.slice(0, 77) + "…" : f.text;
   main.append(id, text);
+  if (group.mentionCount > 1) {
+    const badge = document.createElement("span");
+    badge.className = "nx-mention-badge";
+    badge.textContent = `× ${group.mentionCount}`;
+    badge.title = `Cited ${group.mentionCount} times on this page (deduped into one row)`;
+    main.append(badge);
+  }
 
-  // Actions: [Copy] always; [Download] when a URL is resolvable.
+  // Actions: [Copy] always; [Open] when a URL is resolvable.
+  // The dedup doesn't change which actions appear — the URL,
+  // downloadInfo, and text are the same for every member of
+  // the group, so the representative carries the right values.
   const actions = document.createElement("div");
   actions.className = "nx-finding-actions";
 
