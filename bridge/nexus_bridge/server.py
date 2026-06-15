@@ -71,6 +71,14 @@ PATTERN_SETS: list[dict[str, Any]] = [
     },
 ]
 
+# The bridge is versioned independently of the Chrome extension.
+# The extension has its own 4-digit semver (currently 0.2.0.0,
+# see /VERSION and package.json). The bridge bumps on its own
+# cadence, driven by API changes here, not by extension releases.
+# The /health endpoint exposes the bridge version — it's not a
+# proxy for the extension version, and the two are allowed to
+# diverge. Sync them only when this bridge ships a behavior that
+# callers need to gate on.
 VERSION = "0.1.0"
 
 app = FastAPI(title="Citation Nexus Bridge", version=VERSION)
