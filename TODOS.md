@@ -16,12 +16,24 @@ section are higher priority.
   2169c86, 240c7c4, 47c2ac1, 203ad87, 5484335) on 2026-06-13.
   No behavior change. All tests + goldset + build green at
   every commit. main.ts: 633 → 143 LOC.
-- [ ] **Deduplicate text-vs-meta findings with the same ID** **Priority:** P2
-  When a citation ID is found in both text body (source="text",
-  confidence 0.7) and JSON-LD description (source="json-ld",
-  confidence 0.95), the popup shows two rows. User can pick
-  the JSON-LD one (has [Save]), but the duplicate is noisy.
-  Cross-scanner dedup requires a registry-level merge pass.
+- [x] **Deduplicate repeated findings in the popup** **Completed:** v0.2.0.1
+  When a paper is cited multiple times on the page
+  (e.g. abstract + intro + bibliography) the scanner produces
+  N findings with the same `text`, and the old popup showed
+  N rows with N identical "Open" buttons that all went to the
+  same URL. Subsumes the older P2 "Deduplicate text-vs-meta
+  findings with the same ID" item, which was a narrower case
+  of the same problem.
+
+  `src/lib/dedupe.ts` groups findings by (category,
+  normalizedText). Representative = highest source+confidence
+  rank (meta > json-ld > canonical > opengraph ~ microdata >
+  text). Order = category asc, then first-appearance start asc.
+  paintPopup renders one row per group, with a `× N` badge
+  when N > 1 and the stat label "X unique · Y mentions"
+  when Y > X. The highlighter in the content script still
+  wraps every match on the page — only the popup's row count
+  collapses. 11 unit tests cover the edge cases.
 
 ## downloads
 
