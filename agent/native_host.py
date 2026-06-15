@@ -96,6 +96,21 @@ def dispatch(msg: dict[str, Any]) -> dict[str, Any]:
             return {"ok": r.status_code == 200, "data": r.json()}
         except httpx.HTTPError as e:
             return {"ok": False, "error": f"bridge: {e}"}
+    if action == "scan":
+        # Bridge /scan is intentionally 501 ("scan runs in the
+        # extension"); the native host is just a forwarder. We pass
+        # the bridge's detail through as the error string so the
+        # caller learns the real reason, instead of getting the
+        # misleading "unknown action: scan" we used to return when
+        # this branch was missing.
+        try:
+            r = httpx.post(f"{BRIDGE_URL}/scan", json=msg.get("request", {}), timeout=10.0)
+            if r.status_code == 200:
+                return {"ok": True, "data": r.json()}
+            detail = r.json().get("detail", f"HTTP {r.status_code}")
+            return {"ok": False, "error": f"bridge: {detail}"}
+        except httpx.HTTPError as e:
+            return {"ok": False, "error": f"bridge: {e}"}
     if action == "download":
         # New: fetch the URL and write to the local vault under
         # papers/<category>/<filename>.<format>. Returns the absolute

@@ -57,6 +57,40 @@ def test_dispatch_unknown_action_returns_error():
     assert "unknown action" in result["error"].lower()
 
 
+def test_dispatch_scan_forwards_to_bridge(monkeypatch):
+    """The native host's 'scan' action is a thin proxy to the
+    bridge's /scan endpoint. The bridge intentionally returns
+    501 with a useful detail (scan runs in the extension); we
+    pass the detail through as the error string so the caller
+    sees the real reason instead of 'unknown action: scan'."""
+    mod = load_host()
+    # Mock the bridge: 501 with a FastAPI-shaped detail payload.
+    class FakeResp:
+        status_code = 501
+        def json(self):
+            return {"detail": "Scan runs in the extension. Use the bridge for /import and /patterns only."}
+    monkeypatch.setattr(mod.httpx, "post", lambda *a, **kw: FakeResp())
+    result = mod.dispatch({"action": "scan", "request": {"text": "arXiv:2401.01234"}})
+    assert result["ok"] is False
+    assert "bridge:" in result["error"]
+    assert "Scan runs in the extension" in result["error"]
+
+
+def test_dispatch_scan_passes_through_200(monkeypatch):
+    """When the bridge /scan succeeds (it doesn't today, but the
+    shape of the contract should be honored), the host returns
+    the data verbatim."""
+    mod = load_host()
+    class FakeResp:
+        status_code = 200
+        def json(self):
+            return {"findings": []}
+    monkeypatch.setattr(mod.httpx, "post", lambda *a, **kw: FakeResp())
+    result = mod.dispatch({"action": "scan", "request": {"text": "x"}})
+    assert result["ok"] is True
+    assert result["data"] == {"findings": []}
+
+
 def test_dispatch_download_validates_required_fields():
     mod = load_host()
     # Missing url/category/filename/format -> error.
