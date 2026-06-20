@@ -281,4 +281,32 @@ describe("dedupeFindings", () => {
     expect(g[0]!.representative).toBe(metaF);
     expect(g[0]!.mentions).toEqual([jsonF, textF]);
   });
+
+  it("anchor (conf 0.6) loses to text-body (conf 0.7) for the same ID", () => {
+    // The motivating use case: a medrxiv collection page has
+    // 50 anchor-href findings. If the page ALSO has the same
+    // paper cited in prose (or via meta tag), the text/meta
+    // finding must win as the representative. The anchor is a
+    // suppressed mention. This pins the rank order: anchor=0 <
+    // text=1 < microdata=2.
+    const anchorF = f({
+      category: "citation",
+      patternId: "doi",
+      text: "10.64898/2026.06.09.26353787v1",
+      source: "anchor",
+      confidence: 0.6,
+    });
+    const textF = f({
+      category: "citation",
+      patternId: "doi",
+      text: "10.64898/2026.06.09.26353787v1",
+      source: "text",
+      confidence: 0.7,
+    });
+    const g = dedupeFindings([anchorF, textF]);
+    expect(g).toHaveLength(1);
+    expect(g[0]!.representative).toBe(textF);
+    expect(g[0]!.mentions).toEqual([anchorF]);
+    expect(g[0]!.mentionCount).toBe(2);
+  });
 });

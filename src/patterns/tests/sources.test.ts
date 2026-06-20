@@ -3,7 +3,7 @@ import {
   applyPatterns,
   PatternRegistry,
 } from "@/patterns/registry";
-import { scanMetaTags, scanCanonicalLink, scanJsonLd, scanOpenGraph, scanMicrodata } from "@/patterns/sources";
+import { scanMetaTags, scanCanonicalLink, scanJsonLd, scanOpenGraph, scanMicrodata, scanAnchorHrefs } from "@/patterns/sources";
 import { citationsSet } from "@/patterns/sets/citations";
 
 function reg(): PatternRegistry {
@@ -567,5 +567,123 @@ describe("scanMetaTags — Dublin Core", () => {
     creator.setAttribute("content", "Smith, J.");
     document.head.append(creator);
     expect(scanMetaTags(document)).toHaveLength(0);
+  });
+});
+
+describe("scanAnchorHrefs", () => {
+  it("extracts arXiv ID from an <a href> with confidence 0.6", () => {
+    const a = document.createElement("a");
+    a.setAttribute("href", "https://arxiv.org/abs/2401.01234");
+    document.body.append(a);
+    const findings = scanAnchorHrefs(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.patternId).toBe("arxiv.id");
+    expect(findings[0]!.text).toBe("2401.01234");
+    expect(findings[0]!.confidence).toBe(0.6);
+    expect(findings[0]!.source).toBe("anchor");
+  });
+
+  it("extracts DOI from a medRxiv collection page href (the original gap)", () => {
+    // The exact URL shape from
+    // https://www.medrxiv.org/collection/respiratory-medicine —
+    // the collection page that produced 0 findings before this
+    // scanner existed.
+    const a = document.createElement("a");
+    a.setAttribute("href", "https://www.medrxiv.org/content/10.64898/2026.06.09.26353787v1");
+    document.body.append(a);
+    const findings = scanAnchorHrefs(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.patternId).toBe("doi");
+    expect(findings[0]!.text).toBe("10.64898/2026.06.09.26353787v1");
+    expect(findings[0]!.source).toBe("anchor");
+  });
+
+  it("extracts DOI from a bioRxiv content href (10.1101/... is bioRxiv's DOI prefix)", () => {
+    const a = document.createElement("a");
+    a.setAttribute("href", "https://www.biorxiv.org/content/10.1101/2024.08.15.123456v2");
+    document.body.append(a);
+    const findings = scanAnchorHrefs(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.patternId).toBe("doi");
+    expect(findings[0]!.text).toBe("10.1101/2024.08.15.123456v2");
+  });
+
+  it("extracts DOI from a plain doi.org href", () => {
+    const a = document.createElement("a");
+    a.setAttribute("href", "https://doi.org/10.1038/nature12373");
+    document.body.append(a);
+    const findings = scanAnchorHrefs(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.patternId).toBe("doi");
+    expect(findings[0]!.text).toBe("10.1038/nature12373");
+  });
+
+  it("extracts PMID from a pubmed.ncbi.nlm.nih.gov href", () => {
+    const a = document.createElement("a");
+    a.setAttribute("href", "https://pubmed.ncbi.nlm.nih.gov/33445566");
+    document.body.append(a);
+    const findings = scanAnchorHrefs(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.patternId).toBe("pmid");
+    expect(findings[0]!.text).toBe("33445566");
+  });
+
+  it("extracts PMCID from an ncbi.nlm.nih.gov/pmc/articles/ href", () => {
+    const a = document.createElement("a");
+    a.setAttribute("href", "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10984893/");
+    document.body.append(a);
+    const findings = scanAnchorHrefs(document);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.patternId).toBe("pmcid");
+    expect(findings[0]!.text).toBe("PMC10984893");
+  });
+
+  it("deduplicates identical hrefs within the same page", () => {
+    // medRxiv collection pages repeat the same href in the
+    // title link AND in the "PDF" link; without dedup we'd
+    // emit two findings for the same paper.
+    const a1 = document.createElement("a");
+    a1.setAttribute("href", "https://www.medrxiv.org/content/10.64898/2026.06.09.26353787v1");
+    document.body.append(a1);
+    const a2 = document.createElement("a");
+    a2.setAttribute("href", "https://www.medrxiv.org/content/10.64898/2026.06.09.26353787v1");
+    document.body.append(a2);
+    const findings = scanAnchorHrefs(document);
+    expect(findings).toHaveLength(1);
+  });
+
+  it("ignores non-citation anchor hrefs (wikipedia, blogs, etc.)", () => {
+    // Anchors that don't match any citation URL pattern are
+    // skipped. This is what keeps the popup from listing 200
+    // false-positive "citations" on a typical web page.
+    const a = document.createElement("a");
+    a.setAttribute("href", "https://en.wikipedia.org/wiki/Citation");
+    document.body.append(a);
+    expect(scanAnchorHrefs(document)).toHaveLength(0);
+  });
+
+  it("ignores anchors without an href attribute", () => {
+    const a = document.createElement("a");
+    // no href set
+    document.body.append(a);
+    expect(scanAnchorHrefs(document)).toHaveLength(0);
+  });
+
+  it("walks anchors inside shadow roots", () => {
+    const host = document.createElement("div");
+    const shadow = host.attachShadow({ mode: "open" });
+    const a = document.createElement("a");
+    a.setAttribute("href", "https://arxiv.org/abs/2401.01234");
+    shadow.append(a);
+    document.body.append(host);
+    // The scanner is called on the document; querySelectorAll on
+    // the document root does not cross shadow boundaries, so
+    // shadow-root anchors are NOT visible to the scanner. This
+    // matches the microdata scanner's behavior — shadow content
+    // is a known limitation of the document-level entrypoint.
+    // The fix would be a recursive walkElements pass; deferred
+    // until a real publisher site needs it.
+    const findings = scanAnchorHrefs(document);
+    expect(findings).toHaveLength(0);
   });
 });

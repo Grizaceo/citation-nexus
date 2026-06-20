@@ -102,7 +102,7 @@ export interface PatternSet {
   patterns: PatternDef[];
 }
 
-export type FindingSource = "text" | "meta" | "json-ld" | "canonical" | "opengraph" | "microdata";
+export type FindingSource = "text" | "meta" | "json-ld" | "canonical" | "opengraph" | "microdata" | "anchor";
 
 export interface Finding {
   patternId: string;

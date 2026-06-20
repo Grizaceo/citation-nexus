@@ -28,12 +28,36 @@ section are higher priority.
   `src/lib/dedupe.ts` groups findings by (category,
   normalizedText). Representative = highest source+confidence
   rank (meta > json-ld > canonical > opengraph ~ microdata >
-  text). Order = category asc, then first-appearance start asc.
-  paintPopup renders one row per group, with a `× N` badge
-  when N > 1 and the stat label "X unique · Y mentions"
-  when Y > X. The highlighter in the content script still
-  wraps every match on the page — only the popup's row count
-  collapses. 11 unit tests cover the edge cases.
+  text > anchor). Order = category asc, then first-appearance
+  start asc. paintPopup renders one row per group, with a
+  `× N` badge when N > 1 and the stat label "X unique · Y
+  mentions" when Y > X. The highlighter in the content script
+  still wraps every match on the page — only the popup's row
+  count collapses. 12 unit tests cover the edge cases.
+- [x] **arXiv v-suffix in dedup normalize** **Completed:** v0.2.0.1
+  The dedup normalizer now strips a trailing `\d+v\d+$` so
+  the meta-tag capture (`2401.01234`) and the text-body
+  capture (`2401.01234v3`) collapse to the same group. The
+  strip is gated on the preceding char being a digit (arXiv
+  IDs always end in a digit before the version), so it's
+  precise for the intended target and safe for words like
+  `lev1` / `rev2`. Unit test pins the contract.
+- [x] **Anchor-href scanner (medrxiv collection page gap)** **Completed:** v0.2.0.1
+  New `scanAnchorHrefs` in `src/patterns/sources.ts` walks
+  every `<a href>` and `<link href>` and emits a finding for
+  every URL containing a recognizable citation identifier
+  (arxiv.org / biorxiv.org / medrxiv.org / doi.org / pubmed /
+  pmcid). New `FindingSource = "anchor"` with confidence 0.6
+  (strictly below text body at 0.7, so prose citations always
+  win as the dedup representative). Below the 0.85 download
+  threshold, so anchor findings never trigger a [Save] click
+  — they're "show in popup" only. The motivating use case
+  was the medRxiv / bioRxiv collection pages (a list of 50+
+  papers where each paper's `href` is the only place the URL
+  appears); before this scanner, those pages produced 0
+  findings. 9 new unit tests cover the URL shapes, the
+  within-page href dedup, the non-citation anchor rejection,
+  and the shadow-root limitation.
 
 ## downloads
 

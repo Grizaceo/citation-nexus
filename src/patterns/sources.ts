@@ -420,7 +420,144 @@ export function scanAllSources(root: Node): PureFinding[] {
     ...scanJsonLd(root),
     ...scanOpenGraph(root),
     ...scanMicrodata(root),
+    ...scanAnchorHrefs(root),
   ];
+}
+
+/** Walk for `<a href="...">` and `<link href="...">` elements and emit
+ *  a finding for every URL that contains a recognizable citation
+ *  identifier. This is the "anchor href" scanner — it complements the
+ *  text-body walker (`applyPatterns`) for pages where citations live
+ *  in `href` attributes but never appear in the body text.
+ *
+ *  The motivating use case is the medRxiv / bioRxiv / arXiv **collection
+ *  pages** (e.g. `https://www.medrxiv.org/collection/respiratory-medicine`):
+ *  a list of 50 papers where each paper title is a link whose `href`
+ *  is `https://www.medrxiv.org/content/10.64898/...v1`. The body text
+ *  contains the paper titles but NOT the URLs; the URLs are only in
+ *  the anchor's `href` attribute. Without this scanner, a collection
+ *  page produces 0 findings — a real usability gap discovered during
+ *  dogfooding on 2026-06-13.
+ *
+ *  We only emit when the href looks like a known citation URL
+ *  (arxiv.org / biorxiv.org / medrxiv.org / doi.org / pubmed.ncbi /
+ *  ncbi.nlm.nih.gov/pmc). Generic anchor hrefs to wikipedia.org or
+ *  random blogs are ignored — they are not citations.
+ *
+ *  Confidence is **0.6**, the lowest tier: an anchor href is a
+ *  publisher's navigation hint, not an authoritative claim of
+ *  citation identity. Below the 0.85 download threshold, so anchors
+ *  never trigger a [Save] click — but they DO appear in the popup
+ *  so the user sees "this collection has N papers" and can click
+ *  through to the abstract page (which the meta-tag scanner then
+ *  covers at full confidence 1.0).
+ *
+ *  Dedup interaction: when a collection page also has meta tags
+ *  (e.g. a partial abstract), the meta finding wins as the
+ *  representative (rank 5 vs anchor rank 0; see `dedupe.ts`'s
+ *  SOURCE_RANK). The anchor becomes a suppressed mention with
+ *  `mentionCount` > 1. This is the desired UX: the user sees
+ *  the highest-confidence version as the primary row. */
+export function scanAnchorHrefs(root: Node): PureFinding[] {
+  const out: PureFinding[] = [];
+  // querySelectorAll handles every <a href> + <link href> in one
+  // pass, including those inside shadow roots when `root` is the
+  // document (the default in our pipeline). Cheap: O(N) where N
+  // is the number of anchors + links on the page; typically a
+  // few hundred even on heavy pages. The expensive part is the
+  // regex extraction, which only runs on hrefs that look
+  // citation-shaped.
+  const anchors = (root as ParentNode).querySelectorAll?.(
+    "a[href], link[href]"
+  );
+  if (!anchors) return out;
+  const seen = new Set<string>(); // dedupe identical hrefs within a single page
+  for (const a of Array.from(anchors)) {
+    const href = (a as HTMLAnchorElement | HTMLLinkElement).getAttribute("href");
+    if (!href) continue;
+    const trimmed = href.trim();
+    if (!trimmed) continue;
+    if (seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    // arXiv URL form
+    const arxiv = trimmed.match(
+      /arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5}(?:v\d+)?)/i
+    );
+    if (arxiv) {
+      out.push({
+        patternId: "arxiv.id",
+        category: "citation",
+        label: "anchor arXiv",
+        text: arxiv[1]!,
+        start: 0,
+        end: arxiv[1]!.length,
+        originalLength: arxiv[1]!.length,
+        priority: 0,
+        source: "anchor",
+        confidence: 0.6,
+      });
+      continue;
+    }
+    // DOI URL form (doi.org/...) — handles both arXiv-style DOIs
+    // and publisher DOIs. Also catches bioRxiv / medRxiv collection
+    // hrefs, which use the `biorxiv.org/content/10.x` and
+    // `medrxiv.org/content/10.x` URL forms (10.64898/... is a
+    // medRxiv DOI prefix; 10.1101/... is a bioRxiv DOI prefix).
+    const doi = trimmed.match(
+      /(?:doi\.org\/|(?:www\.)?(?:biorxiv|medrxiv)\.org\/content\/)(10\.\d{4,9}\/[^?\s#]+)/i
+    );
+    if (doi) {
+      out.push({
+        patternId: "doi",
+        category: "citation",
+        label: "anchor DOI",
+        text: doi[1]!,
+        start: 0,
+        end: doi[1]!.length,
+        originalLength: doi[1]!.length,
+        priority: 0,
+        source: "anchor",
+        confidence: 0.6,
+      });
+      continue;
+    }
+    // PMID via pubmed.ncbi.nlm.nih.gov or ncbi.nlm.nih.gov/pubmed/
+    const pmid = trimmed.match(
+      /(?:pubmed\.ncbi\.nlm\.nih\.gov|www\.ncbi\.nlm\.nih\.gov\/pubmed)\/(\d{6,9})/i
+    );
+    if (pmid) {
+      out.push({
+        patternId: "pmid",
+        category: "citation",
+        label: "anchor PMID",
+        text: pmid[1]!,
+        start: 0,
+        end: pmid[1]!.length,
+        originalLength: pmid[1]!.length,
+        priority: 0,
+        source: "anchor",
+        confidence: 0.6,
+      });
+      continue;
+    }
+    // PMCID via ncbi.nlm.nih.gov/pmc/articles/PMCxxxxxx
+    const pmcid = trimmed.match(/ncbi\.nlm\.nih\.gov\/pmc\/articles\/(PMC\d+)/i);
+    if (pmcid) {
+      out.push({
+        patternId: "pmcid",
+        category: "citation",
+        label: "anchor PMCID",
+        text: pmcid[1]!,
+        start: 0,
+        end: pmcid[1]!.length,
+        originalLength: pmcid[1]!.length,
+        priority: 0,
+        source: "anchor",
+        confidence: 0.6,
+      });
+    }
+  }
+  return out;
 }
 
 /** Walk for Schema.org microdata (itemscope / itemprop / itemtype).

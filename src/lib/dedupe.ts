@@ -54,6 +54,12 @@ const SOURCE_RANK: Record<FindingSource, number> = {
   opengraph: 2, // conf 0.85
   microdata: 2, // conf 0.85
   text: 1, // conf 0.7
+  anchor: 0, // conf 0.6 — collection-page / list-page hrefs.
+             // The href is a navigation hint, not an authoritative
+             // claim; we keep it strictly below text-body matches
+             // (0.7) so a paper cited in prose still wins as the
+             // representative over a paper that's only linked.
+             // See `scanAnchorHrefs` in sources.ts.
 };
 
 /** Composite rank: confidence is primary, source is the

@@ -1,6 +1,6 @@
 {
   "name": "citation-nexus",
-  "version": "0.2.0.0",
+  "version": "0.2.0.1",
   "private": true,
   "description": "Chrome extension + agent bridge: detect citations (arXiv, DOI, PubMed, GitHub) and English-language science concepts on web pages, highlight them for diagonal reading, and expose an agentic API.",
   "type": "module",
