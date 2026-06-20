@@ -123,11 +123,17 @@ section are higher priority.
   when individual tests trigger network calls. Switching to
   Bun's native test runner + happy-dom-globals would
   eliminate the happy-dom fetch layer entirely.
-- [ ] **VERSION + CHANGELOG + TODOS integration with CI** **Priority:** P2
-  The new files (added in this commit) need a CI check that
-  fails if `VERSION` and `package.json.version` diverge, and
-  that the CHANGELOG has an entry for the current version.
-  GHA workflow under `.github/workflows/`.
+- [x] **VERSION + CHANGELOG + TODOS integration with CI** **Completed:** v0.2.0.1
+  New job `version-check` in `.github/workflows/ci.yml` gates
+  every push and PR on two conditions: (1) `VERSION` and
+  `package.json.version` must match exactly, and (2)
+  `CHANGELOG.md` must contain a `## [<current version>]` heading.
+  Both run in pure bash + node + grep — no extra dependencies,
+  <1s wall time. Errors surface as GitHub annotations
+  (`::error::VERSION (...) and package.json version (...) differ`)
+  so the failure shows up in the PR UI with the actual values.
+  Closes the P2 item: contributors can no longer silently
+  desync the three files.
 
 ## docs / release
 

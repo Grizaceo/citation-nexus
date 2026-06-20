@@ -70,3 +70,44 @@ jobs:
         with:
           python-version: "3.13"
       - run: python3 -m pytest tests/ -q
+
+  version-check:
+    # Gates the v0.2.0.1 TODOS.md P2 item: the VERSION file
+    # and package.json must agree, and the current version must
+    # have a CHANGELOG entry. Without this, contributors can
+    # silently desync the three and the next release lands with
+    # inconsistent metadata. Runs in <1s; no dependencies beyond
+    # bash + node (for jq) + grep.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify VERSION == package.json version
+        run: |
+          set -euo pipefail
+          VERSION_FILE=$(tr -d '[:space:]' < VERSION)
+          PKG_VERSION=$(node -e "console.log(require('./package.json').version)")
+          echo "VERSION file: $VERSION_FILE"
+          echo "package.json: $PKG_VERSION"
+          if [ "$VERSION_FILE" != "$PKG_VERSION" ]; then
+            echo "::error::VERSION ($VERSION_FILE) and package.json version ($PKG_VERSION) differ"
+            exit 1
+          fi
+      - name: Verify CHANGELOG has an entry for the current version
+        run: |
+          set -euo pipefail
+          VERSION_FILE=$(tr -d '[:space:]' < VERSION)
+          # The CHANGELOG uses [0.2.0.1] (bracketed) on its own line.
+          # A grep with -F treats the pattern as a fixed string so
+          # the dots in the version are not interpreted as regex.
+          if ! grep -qF "[$VERSION_FILE]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md is missing an entry for [$VERSION_FILE]"
+            echo "::error::Add a '## [$VERSION_FILE] - $(date -u +%Y-%m-%d)' section above [Unreleased]."
+            exit 1
+          fi
+          echo "CHANGELOG entry found for [$VERSION_FILE]"
